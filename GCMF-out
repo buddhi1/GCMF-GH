@@ -1,0 +1,41 @@
+
+219831 Polygons with 60305435 vertices in total.
+
+463591 Polygons with 24739074 vertices in total.
+
+
+GPU running time for transfering data to GPU: 453.050171 (453.050171)
+
+	Sorting 1D: 553.044312 
+
+	Counting MBR intersection : 301.670624 
+
+	Computing MBR intersection (new approach 1D [dim:X] ): 493.051483 
+
+
+	Polygon pairs candidate: 1020458
+
+GPU Running Time For Computing MBR intersection (new approach 1D [dim:X] ): 1049.654175 (1502.704346)
+
+	Number of Point in Polygon candidates: 842516
+
+GPU Running Time for CMF Filter for Point in Polygon Test: 10.669248 (1513.373535)
+
+	Number of within pairs: 453802
+
+GPU Running Time for Point in Polygon Test: 6669.448730 (8182.822266)
+
+	Number of candidates for CMF filter: 566656
+
+	Total number of base edges: 25969322 	 Total number of overlay edges: 20451866
+
+	Number of candidates after CMF filter: 198142
+	Total Number of Edge Pairs: 12794606592
+
+GPU Running Time for Counting Common MBR Filter: 1746.591309 (9929.414062)
+
+GPU Running Time for Applying Common MBR Filter: 806.554626 (10735.968750)
+
+	Actual number of intersected polygon pairs: 86172
+
+GPU Running Time for Counting Edge Intersecions: 5482.280273 (16218.249023)
