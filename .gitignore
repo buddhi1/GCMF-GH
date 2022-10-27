@@ -1,5 +1,5 @@
 makefile
 program
 *.o
-GH-CUDA/results
+GH-CUDA/results/
 GH-CUDA/data/

@@ -1,0 +1,3 @@
+Commit History
+-------------------------------------------
+Init Commit + git ignore added: added all files and ignored the unwated files
