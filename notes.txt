@@ -1,3 +1,4 @@
 Commit History
 -------------------------------------------
 Init Commit + git ignore added: added all files and ignored the unwated files
+Branch -> multiPolygon: using run.sh multi polygon intersection capable code. Does not use GCMF at all.  

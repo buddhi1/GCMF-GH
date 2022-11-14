@@ -15,7 +15,7 @@ int argn;
 string outputFile=string("results/Fig-def-R.poly");
 
 // read from shape files
-void readInputFromShapeFiles(double **baseCoords, double **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
+void readInputFromShapeFiles(double **polyPX, double **polyPY, double **polyQX, double **polyQY, string inputShp1, int PPID, string inputShp2, int QQID){
   int sizeP=PPTmp[PPID].size, sizeQ=QQTmp[QQID].size;
   if(sizeP<sizeQ){
     PP.push_back(QQTmp[QQID]);
@@ -41,22 +41,24 @@ void readInputFromShapeFiles(double **baseCoords, double **overlayCoords, string
     }
   }
 
-  *baseCoords=(double *)malloc(2*sizeP*sizeof(double));
-  *overlayCoords=(double *)malloc(2*sizeQ*sizeof(double));
+  *polyPX=(double *)malloc(sizeP*sizeof(double));
+  *polyPY=(double *)malloc(sizeP*sizeof(double));
+  *polyQX=(double *)malloc(sizeQ*sizeof(double));
+  *polyQY=(double *)malloc(sizeQ*sizeof(double));
 
   int i=0;
   // copy polygon P values
   for (vertex* V : PP[0].vertices(ALL)){
-    *(*baseCoords+i++) = V->p.x;
-    *(*baseCoords+i++) = V->p.y;
+    *(*polyPX+i) = V->p.x;
+    *(*polyPY+i++) = V->p.y;
 	}
   if(DEBUG_INFO_PRINT) cout<<"PP Count "<<i;
 
   i=0;
   // copy polygon Q values
   for (vertex* V : QQ[0].vertices(ALL)){
-    *(*overlayCoords+i++) = V->p.x;
-    *(*overlayCoords+i++) = V->p.y;
+    *(*polyQX+i) = V->p.x;
+    *(*polyQY+i++) = V->p.y;
 	}
   if(DEBUG_INFO_PRINT) cout<<" QQ Count "<<i<<endl;
 }
@@ -96,10 +98,10 @@ void getCMBR(double *cmbr){
 }
 
 // read polygons into vectors
-void readPolygons(int argc, char* argv[], double **baseCoords, double **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
+void readPolygons(int argc, char* argv[], double **polyPX, double **polyPY, double **polyQX, double **polyQY, string inputShp1, int PPID, string inputShp2, int QQID){
   // check input parameters
   if (argc < 4) {
-    readInputFromShapeFiles(baseCoords, overlayCoords, inputShp1, PPID, inputShp2, QQID);
+    readInputFromShapeFiles(polyPX, polyPY, polyQX, polyQY, inputShp1, PPID, inputShp2, QQID);
   }else{
     argn = 1;
     if (string(argv[1]) == "-union") {
@@ -117,8 +119,8 @@ void readPolygons(int argc, char* argv[], double **baseCoords, double **overlayC
     FILE *pfile, *qfile;
     pfile=fopen(argv[argn++], "r");
     qfile=fopen(argv[argn++], "r");
-    gpc_read_polygon(pfile, baseCoords, &sizeP, "PP");
-    gpc_read_polygon(qfile, overlayCoords, &sizeQ, "QQ");
+    gpc_read_polygon(pfile, polyPX, polyPY, &sizeP, "PP");
+    gpc_read_polygon(qfile, polyQX, polyQY, &sizeQ, "QQ");
     // */
 
     // -------------------------------------------------------------------------------------------
@@ -151,7 +153,7 @@ void readPolygons(int argc, char* argv[], double **baseCoords, double **overlayC
 }
 
 // handles polygons without holes
-void regularPolygonHandler(double *baseCoord, double *overlayCoords){
+void regularPolygonHandler(double *polyPX, double *polyPY, double *polyQX, double *polyQY){
   // -------------------------------------------------------------------------------------------
   // PHASE:2 calculate intersections using GPU acceleration
   // -------------------------------------------------------------------------------------------
@@ -164,8 +166,8 @@ void regularPolygonHandler(double *baseCoord, double *overlayCoords){
   getCMBR(cmbr);
 
   calculateIntersections(
-      baseCoord, 
-      overlayCoords, 
+      polyPX, polyPY, 
+      polyQX, polyQY, 
       PP[0].size, QQ[0].size, cmbr, 
       &countNonDegenIntP, &countNonDegenIntQ, 
       &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
@@ -254,13 +256,13 @@ void regularPolygonHandler(double *baseCoord, double *overlayCoords){
   free(cmbr);
 }
 
-void GH_CUDA(double *baseCoords, double *overlayCoords){
+void GH_CUDA(double *polyPX, double *polyPY, double *polyQX, double *polyQY){
   high_resolution_clock::time_point start, end, start1, end1, start2, end2, start3, end3;
 
   if(DEBUG_TIMING) start = high_resolution_clock::now();
 
   if(DEBUG_TIMING) start3 = high_resolution_clock::now();
-  regularPolygonHandler(baseCoords, overlayCoords);
+  regularPolygonHandler(polyPX, polyPY, polyQX, polyQY);
   if(DEBUG_TIMING) end3 = high_resolution_clock::now();// -------------------------------------------------------------------------------------------
 
   // PHASE: 3
@@ -295,7 +297,7 @@ void GH_CUDA(double *baseCoords, double *overlayCoords){
 }
 
 int main(int argc, char* argv[]){
-  double *baseCoords, *overlayCoords;
+  double *polyPX, *polyPY, *polyQX, *polyQY;
   // [0, 36, 2742, 2741, 5978, | 2854, 2737]
   int PPID_list[]={0, 36}; //ne_10m_ocean
   int PPID=36;
@@ -314,13 +316,15 @@ int main(int argc, char* argv[]){
   int QQID_list[]={4, 1}; //ne_10m_land
   int QQID=4;
   loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
-  // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, PPID, inputShp2, QQID);
+  // readPolygons(argc, argv, &polyPX, &polyPY, &polyQX, &polyQY, inputShp1, PPID, inputShp2, QQID);
 
   for(int cid=0; cid<2; ++cid){
-    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, PPID_list[cid], inputShp2, QQID_list[cid]);
-    GH_CUDA(baseCoords, overlayCoords);
-    free(baseCoords);
-    free(overlayCoords);
+    readInputFromShapeFiles(&polyPX, &polyPY, &polyQX, &polyQY, inputShp1, PPID_list[cid], inputShp2, QQID_list[cid]);
+    GH_CUDA(polyPX, polyPY, polyQX, polyQY);
+    free(polyPX);
+    free(polyPY);
+    free(polyQX);
+    free(polyQY);
     PP.clear();
     QQ.clear();
   }

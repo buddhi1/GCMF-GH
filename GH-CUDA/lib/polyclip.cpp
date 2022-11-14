@@ -867,21 +867,50 @@ void savePolygon(vector<polygon>& PP, string s) {
 
 ////////////////////////////////////////////////////////////////////////
 //
-// save polygons to array
+// save polygons to array old 
 //
-void gpc_read_polygon(FILE *fp, double **px, double **py, int *size, string polyName){
+// void gpc_read_polygon(FILE *fp, double **px, double **py, int *size, string polyName){
+//   int v; 
+//   point2D point;
+//   polygon P;
+//   fscanf(fp, "%d", size);
+
+//   MALLOC(*px, *size*sizeof(double), "vertex x values", double);
+//   MALLOC(*py, *size*sizeof(double), "vertex y values", double);
+          
+//   for (v=0; v<*size; v++){
+//     fscanf(fp, "%lf,%lf", (*px+v), (*py+v));
+//     point.x=*(*px+v);
+//     point.y=*(*py+v);
+//     P.newVertex(point, true);
+//     // printf(" %f %f, ", p->contour[0].vertex[v].x,
+//     //                    p->contour[0].vertex[v].y );
+//   }
+//   // P.numVertices=*size;
+//   if(polyName=="PP") PP.push_back(P);
+//   else QQ.push_back(P);
+//   if(DEBUG_INFO_PRINT) printf("Polygon %s with %d vertices reading completed!\n", polyName.c_str(), *size);
+// }
+
+//
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+//
+// save polygons to array old 
+//
+void gpc_read_polygon(FILE *fp, double **coords, int *size, string polyName){
   int v; 
   point2D point;
   polygon P;
   fscanf(fp, "%d", size);
 
-  MALLOC(*px, *size*sizeof(double), "vertex x values", double);
-  MALLOC(*py, *size*sizeof(double), "vertex y values", double);
+  MALLOC(*coords, *size*2*sizeof(double), "vertex x values", double);
           
-  for (v=0; v<*size; v++){
-    fscanf(fp, "%lf,%lf", (*px+v), (*py+v));
-    point.x=*(*px+v);
-    point.y=*(*py+v);
+  for (v=0; v<*size; v+2){
+    fscanf(fp, "%lf,%lf", (*coords+v), (*coords+1+v));
+    point.x=*(*coords+v);
+    point.y=*(*coords+1+v);
     P.newVertex(point, true);
     // printf(" %f %f, ", p->contour[0].vertex[v].x,
     //                    p->contour[0].vertex[v].y );
