@@ -294,12 +294,14 @@ void GH_CUDA(double *baseCoords, double *overlayCoords){
   }
 }
 
-int main(int argc, char* argv[]){
+int ghcuda(int PPID_list[], int QQID_list[]){
+// int main(int argc, char* argv[]){
+
   double *baseCoords, *overlayCoords;
   // [0, 36, 2742, 2741, 5978, | 2854, 2737]
-  int PPID_list[]={0, 36}; //ne_10m_ocean
-  int PPID=36;
-  string inputShp1=string("../../datasets/ne_10m_ocean.csv");
+  // int PPID_list[]={0, 36}; //ne_10m_ocean
+  int PPID=36;  //defines the end of file. Use -1 to read the complete file
+  string inputShp1=string("../datasets/ne_10m_ocean.csv");
   loadPolygonFromShapeFile2(PPTmp, inputShp1, PPID+1);
 
   // [521, 1048, 1202, 1661, 1886, | 1524, 54, 1081, 1193]
@@ -310,9 +312,9 @@ int main(int argc, char* argv[]){
   // time these for paper
   // ocean, land [2742, 30] [2742, 42]
   // [4, 1, 0, 33, 30, 3, | 42, 25, 8, 19]
-  string inputShp2=string("../../datasets/ne_10m_land.csv");
-  int QQID_list[]={4, 1}; //ne_10m_land
-  int QQID=4;
+  string inputShp2=string("../datasets/ne_10m_land.csv");
+  // int QQID_list[]={4, 1}; //ne_10m_land
+  int QQID=4;  //defines the end of file. Use -1 to read the complete file
   loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
   // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, PPID, inputShp2, QQID);
 

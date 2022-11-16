@@ -35,7 +35,8 @@ void copyPolygon(
     }
 }
 
-int main(int argc, char* argv[]){  
+// int main(int argc, char* argv[]){  
+int spatialJoin(int argc, char* argv[], int **djxyVector_return, int **dPiPFlag_return, long *pairNum_return){  
     float Join_Total_Time_SEQ=0, Join_Total_Time_GPU=0;
     cudaError_t cudaMemError;
 //------------------------ Console Input ---------------------------------- 
@@ -85,9 +86,11 @@ Second user input: dimSelect
     switch(DATASET){
        case 1:
          //strcpy(baseFileName, "/pylon5/cc560kp/danialll/Text_Datasets/admin_states.txt");
-         strcpy(baseFileName, "../datasets/datasets/admin_states-small.txt");
+        //  strcpy(baseFileName, "../datasets/datasets/admin_states-small.txt");
+         strcpy(baseFileName, "../datasets/datasets/admin_states.txt");
 	 //strcpy(overlayFileName, "/pylon5/cc560kp/danialll/Text_Datasets/urban_areas.txt");
-	 strcpy(overlayFileName, "../datasets/datasets/urban_areas-small.txt");
+	//  strcpy(overlayFileName, "../datasets/datasets/urban_areas-small.txt");
+	 strcpy(overlayFileName, "../datasets/datasets/urban_areas.txt");
          printf("\nDataset: admin - urban\n");
          break;
        case 2:
@@ -120,7 +123,7 @@ Second user input: dimSelect
 //return;
 
 printf("size %d %d %d %d %d\n", bVNum[0], bVNum[1], bVNum[2], bVPSNum[0], bVPSNum[1]);
-PrintPolygon(baseCoords+2*bVPSNum[0], bVNum[1]);
+// PrintPolygon(baseCoords+2*bVPSNum[0], bVNum[1]);
 
 // =======================**************========================================
 /* CPU data structures
@@ -234,6 +237,7 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
     StartTimer(&start_GPU, &stop_GPU);
 
     int *djxyCounter, *djxyVector, polNum=bPolNum+oPolNum; 
+    // int *djxyCounter, polNum=bPolNum+oPolNum; 
     cudaMemError=cudaMalloc((void**)&djxyCounter,sizeof(int)*(polNum));
 
     long pairNum=SortBaseMBROverlap(bPolNum, oPolNum, dbMBR, doMBR, &djxyCounter, &djxyVector, dimSort, dimSelect);
@@ -256,6 +260,7 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
 //--------------------------- CMF filter for Polygon Test operation --------------------------
     StartTimer(&start_GPU, &stop_GPU);
     int *djxy2IndexList, *djPiPIndexList, *dPiPFlag, *djoinFlag;
+    // int *djxy2IndexList, *djPiPIndexList, *djoinFlag;
     char* dPiPType;
     long eiNum, pairNum3, pipNum, workLoadNum;
     coord_t *dcMBR, *dbMBR2, *doMBR2;
@@ -332,7 +337,10 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
     pairNum3=SegmentIntersectJoin(bCoords, oCoords, eiNum, djxyVector, djxy2IndexList, dbVPSNum, doVPSNum, dbEdgePSCounter, doEdgePSCounter, dbEdgeList, doEdgeList, &dSegmentIntersectJoinFlag);
     //pairNum3=SegmentIntersectJoin2(bCoords, oCoords, eiNum, djxyVector, djxy2IndexList, dbVPSNum, doVPSNum, dbEdgePSCounter, doEdgePSCounter, dWorkLoadPSCounter, workLoadNum, dbEdgeList, doEdgeList, &dSegmentIntersectJoinFlag);
 
-    PrintPairs(djxyVector, dPiPFlag, pairNum); // how to get pair IDs *************
+    // PrintPairs(djxyVector, dPiPFlag, pairNum); // how to get pair IDs *************
+    *pairNum_return=pairNum;
+    *djxyVector_return=djxyVector;
+    *dPiPFlag_return=dPiPFlag;
 
     /*
     How to get the pairs in GPU
@@ -367,12 +375,13 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
 
 //cudaFree(djxyCounter);
 
-int baseID=260, overlayID=11589;
-double *polyPX, *polyPY, *polyQX, *polyQY;
-copyPolygon(&polyPX, &polyPY, &polyQX, &polyQY,
-            bVNum, bVPSNum, baseCoords, 
-            oVNum, oVPSNum, overlayCoords,
-            baseID, overlayID);
+//GCMF + GH merge sample code
+// int baseID=260, overlayID=11589;
+// double *polyPX, *polyPY, *polyQX, *polyQY;
+// copyPolygon(&polyPX, &polyPY, &polyQX, &polyQY,
+//             bVNum, bVPSNum, baseCoords, 
+//             oVNum, oVPSNum, overlayCoords,
+//             baseID, overlayID);
 
 cudaThreadExit();
 //==============================================================================

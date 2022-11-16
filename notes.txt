@@ -2,3 +2,7 @@ Commit History
 -------------------------------------------
 Init Commit + git ignore added: added all files and ignored the unwated files
 Branch -> multiPolygon: using run.sh multi polygon intersection capable code. Does not use GCMF at all.  
+
+To Do
+1. main.cpp-> fix issue in the copy pair IDs from GPU
+2. remove memcpy in the GH-CUDA and reuse polygon laye data
