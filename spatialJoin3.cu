@@ -36,7 +36,11 @@ void copyPolygon(
 }
 
 // int main(int argc, char* argv[]){  
-int spatialJoin(int argc, char* argv[], int **djxyVector_return, int **dPiPFlag_return, long *pairNum_return){  
+int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 
+    coord_t **pBaseCoords, coord_t **pOverlaycoords, 
+    int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum,
+    vector<polygon> &PP, vector<polygon> &QQ){  
+
     float Join_Total_Time_SEQ=0, Join_Total_Time_GPU=0;
     cudaError_t cudaMemError;
 //------------------------ Console Input ---------------------------------- 
@@ -80,6 +84,16 @@ Second user input: dimSelect
     mbr_t* seqOMBR=(mbr_t*)malloc(MAX_POLYS_OVERLAY*4*sizeof(mbr_t));
     coord_t* seqMBR2=(coord_t*)malloc(MAX_POLYS_BASE*4*sizeof(coord_t));
     coord_t* seqOMBR2=(coord_t*)malloc(MAX_POLYS_OVERLAY*4*sizeof(coord_t));
+
+    // =========================================================================
+    // Assign additional pointers to the input data arrays to be used in the GH code CPU
+    *pBaseCoords=baseCoords;
+    *pOverlaycoords=overlayCoords;
+    *pBVNum=bVNum;
+    *pBVPSNum=bVPSNum;
+    *pOVNum=oVNum; 
+    *pOVPSNum=oVPSNum;
+    // =========================================================================
     //=================== Reading First(base) Polygon ==========================
 
     char baseFileName[100], overlayFileName[100];
@@ -109,9 +123,9 @@ Second user input: dimSelect
          printf("\nDataset: postal - sports\n");
          break;
     }
-    bPolNum=ReadTextFormatPolygon2(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE);    
+    bPolNum=ReadTextFormatPolygon2WithVector(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE, PP);    
     printf("\n%lu Polygons with %lu vertices in total.\n",bPolNum,bVNumSum);
-    oPolNum=ReadTextFormatPolygon2(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY); 
+    oPolNum=ReadTextFormatPolygon2WithVector(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY, QQ); 
     printf("\n%lu Polygons with %lu vertices in total.\n",oPolNum,oVNumSum);
 
 
@@ -338,9 +352,7 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
     //pairNum3=SegmentIntersectJoin2(bCoords, oCoords, eiNum, djxyVector, djxy2IndexList, dbVPSNum, doVPSNum, dbEdgePSCounter, doEdgePSCounter, dWorkLoadPSCounter, workLoadNum, dbEdgeList, doEdgeList, &dSegmentIntersectJoinFlag);
 
     // PrintPairs(djxyVector, dPiPFlag, pairNum); // how to get pair IDs *************
-    *pairNum_return=pairNum;
-    *djxyVector_return=djxyVector;
-    *dPiPFlag_return=dPiPFlag;
+
 
     /*
     How to get the pairs in GPU
@@ -382,6 +394,10 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
 //             bVNum, bVPSNum, baseCoords, 
 //             oVNum, oVPSNum, overlayCoords,
 //             baseID, overlayID);
+
+*PPID_list=(int *)malloc(sizeof(int)*pairNum);
+*QQID_list=(int *)malloc(sizeof(int)*pairNum);
+CopyPairsToCPU(*PPID_list, *QQID_list, totalPairNum, djxyVector, dPiPFlag, pairNum); 
 
 cudaThreadExit();
 //==============================================================================

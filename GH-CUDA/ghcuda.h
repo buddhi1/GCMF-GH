@@ -4,8 +4,8 @@ void calculateIntersections(
                 double *polyPX, double *polyPY, double *polyQX,  double *polyQY, 
                 int sizeP, int sizeQ);
 void calculateIntersections(
-                double *baseCoord, 
-                double *overlayCoords, 
+                coord_t *baseCoord, 
+                coord_t *overlayCoords, 
                 int sizeP, int sizeQ, double *cmbr,
                 int *countNonDegenIntP, int *countNonDegenIntQ, 
                 double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,

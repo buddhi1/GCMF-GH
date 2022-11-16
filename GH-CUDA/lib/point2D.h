@@ -12,6 +12,9 @@
 
 using namespace std;
 
+typedef double coord_t;
+
+
 ////////////////////////////////////////////////////////////////////////
 //
 // a simple 2D point class with essential functionality
@@ -22,14 +25,14 @@ class point2D
 {
  public:
   // x and y coordinates of the point
-  double x,y;
+  coord_t x,y;
 
   // default-constructor to generate the 2D point (0,0)
   point2D() { x=y=0; }
    // copy-constructor
   point2D(const point2D& b) { x=b.x; y=b.y; }
   // initialize 2D point with explicit coordinates
-  point2D(double X, double Y) { x=X; y=Y; }
+  point2D(coord_t X, coord_t Y) { x=X; y=Y; }
   
   // destructor
   ~point2D() {}
@@ -47,22 +50,22 @@ class point2D
   inline void operator-=(const point2D& b) { x-=b.x; y-=b.y; }
 
   // multiply a 2D point by a scalar
-  inline point2D operator*(double r) const { return point2D(r*x,r*y); }
+  inline point2D operator*(coord_t r) const { return point2D(r*x,r*y); }
   // multiply the operand by a scalar
-  inline void operator*=(double r) { x*=r; y*=r; }
+  inline void operator*=(coord_t r) { x*=r; y*=r; }
   // divide a 2D point by a scalar
-  inline point2D operator/(double r) const { assert(r!=0.0); return point2D(x/r,y/r); }
+  inline point2D operator/(coord_t r) const { assert(r!=0.0); return point2D(x/r,y/r); }
   // divide the operand by a scalar
-  inline void operator/=(double r) { assert(r!=0.0); x/=r; y/=r; }
+  inline void operator/=(coord_t r) { assert(r!=0.0); x/=r; y/=r; }
 
   // calculate the dot-product
-  inline double operator*(const point2D& b) const { return (x*b.x+y*b.y); }
+  inline coord_t operator*(const point2D& b) const { return (x*b.x+y*b.y); }
   // calculate the cross-product
-  inline double operator%(const point2D& b) const { return (x*b.y-y*b.x); }
+  inline coord_t operator%(const point2D& b) const { return (x*b.y-y*b.x); }
 };
 
 // multiplication operator that allows the scalar value to preceed the 2D point
-inline point2D operator*(double r, const point2D& v) { return v*r; }
+inline point2D operator*(coord_t r, const point2D& v) { return v*r; }
 
 // write a 2D point to a stream
 inline ostream& operator<<(ostream& s, const point2D& v) { return (s << v.x << " " << v.y); }

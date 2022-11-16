@@ -7,6 +7,9 @@
 //#include <mpi.h>
 //#include <shapelib/shapefil.h>
 
+#include "GH-CUDA/lib/polyclip.cpp"
+#include "GH-CUDA/lib/readShapefile.cpp"
+
 using namespace ClipperLib;
 
 //================================ GetEuclideanDist ===================================
@@ -275,6 +278,98 @@ int ReadTextFormatPolygon2(const char* fileName, int* bVNum, long* bVPSNum, mbr_
 }
 //==============================================================================
 
+
+//============================ ReadTextFormatPolygon2 with GH CPU data structure reading =============================
+int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVPSNum, mbr_t* seqMBR, coord_t* seqMBR2, coord_t* baseCoords, long* bVNumSum, char mbrType, int maxPoly, vector<polygon>& PP){
+    int fNum=0, maxV=0;
+    FILE *fid1;
+    char tkBuff[2][50];
+    char* buff=(char*)malloc(sizeof(char)*MAX_BUFF);
+    coord_t fBuff[2], x1, y1, x2, y2, polyBuff[MAX_VERTICES][2];
+    fid1=fopen(fileName,"rt");    
+    int pCounter=0, i;
+    double edgeSum;
+
+    point2D v;
+    polygon P;
+
+    while(fgets(buff,MAX_BUFF,fid1)!=NULL && pCounter<maxPoly){        
+        char cX1[20], cY1[20], cX2[20], cY2[20]; 
+        i=0;
+        i=getVertex(buff, tkBuff, fBuff,i,1);
+        fNum=0;
+        x1=1000000;
+        y1=1000000;
+        x2=-1000000;
+        y2=-1000000;
+        edgeSum=0;
+        while(i!=-1){        
+            i=getVertex(buff, tkBuff, fBuff,i,2);
+            if(i==-1&&fBuff[0]==0&&fBuff[1]==0)break;
+            polyBuff[fNum][0]=fBuff[0];
+            polyBuff[fNum++][1]=fBuff[1]; 
+            if(fBuff[0]<x1){x1=fBuff[0];strcpy(cX1, tkBuff[0]);}
+            if(fBuff[1]<y1){y1=fBuff[1];strcpy(cY1, tkBuff[1]);}
+            if(fBuff[0]>x2){x2=fBuff[0];strcpy(cX2, tkBuff[0]);}
+            if(fBuff[1]>y2){y2=fBuff[1];strcpy(cY2, tkBuff[1]);}
+        }
+        seqMBR[pCounter*4]=CoordToMBR(cX1, mbrType);
+        seqMBR[pCounter*4+1]=CoordToMBR(cY1, mbrType);
+        seqMBR[pCounter*4+2]=CoordToMBR(cX2, mbrType);
+        seqMBR[pCounter*4+3]=CoordToMBR(cY2, mbrType);
+        seqMBR2[pCounter*4]=atof(cX1);
+        seqMBR2[pCounter*4+1]=atof(cY1);
+        seqMBR2[pCounter*4+2]=atof(cX2);
+        seqMBR2[pCounter*4+3]=atof(cY2);
+
+        if(seqMBR[pCounter*4]>seqMBR[pCounter*4+2])swapElements(seqMBR, pCounter*4, pCounter*4+2);
+        else if(seqMBR[pCounter*4]==seqMBR[pCounter*4+2]){printf("\nMBR Error!\n");continue;}
+        if(seqMBR[pCounter*4+1]>seqMBR[pCounter*4+3])swapElements(seqMBR, pCounter*4+1, pCounter*4+3);
+        else if(seqMBR[pCounter*4+1]==seqMBR[pCounter*4+3]){printf("\nMBR Error!\n");continue;}
+
+        if(seqMBR2[pCounter*4]>seqMBR2[pCounter*4+2])swapElements(seqMBR2, pCounter*4, pCounter*4+2);
+        else if(seqMBR2[pCounter*4]==seqMBR2[pCounter*4+2]){printf("\nMBR Error!\n");continue;}
+        if(seqMBR2[pCounter*4+1]>seqMBR2[pCounter*4+3])swapElements(seqMBR2, pCounter*4+1, pCounter*4+3);
+        else if(seqMBR2[pCounter*4+1]==seqMBR2[pCounter*4+3]){printf("\nMBR Error!\n");continue;}
+
+//printf("\n%d:\t%ld  %s\t%ld  %s\t%ld  %s\t%ld  %s", pCounter, seqMBR[pCounter*4], cX1, seqMBR[pCounter*4+1], cY1, seqMBR[pCounter*4+2], cX2, seqMBR[pCounter*4+3], cY2);
+//printf("\n%s %s %s %s", cX1, cY1, cX2, cY2);
+        fNum-=2;
+        for(int k=0;k<fNum;k++){
+            *(baseCoords+2*(*bVNumSum+k))=polyBuff[k+2][0];
+            *(baseCoords+2*(*bVNumSum+k)+1)=polyBuff[k+2][1];
+            if(k!=0)edgeSum+=GetEuclideanDist(*(baseCoords+2*(*bVNumSum+k-1)), *(baseCoords+2*(*bVNumSum+k-1)+1), *(baseCoords+2*(*bVNumSum+k)), *(baseCoords+2*(*bVNumSum+k)+1));
+
+            // ---------------------- FOR GH CPU data structure: start ----------------------
+            v=point2D(polyBuff[k+2][0], polyBuff[k+2][1]);
+			P.newVertex(v, true);
+            // ---------------------- FOR GH CPU data structure: end ----------------------
+        } 
+
+        *bVNumSum+=fNum;
+        // ---------------------- FOR GH CPU data structure: start ----------------------
+        PP.push_back(P);
+        P=polygon();
+        // ---------------------- FOR GH CPU data structure: end ----------------------
+
+
+
+        //printf("\nPoly, %d , Edges:, %d,  AverageEdgeLength:, %f, (w,h),  %f , %f", pCounter, fNum, bEdgeLen[pCounter], seqMBR2[pCounter*4+2]-seqMBR2[pCounter*4], seqMBR2[pCounter*4+3]-seqMBR2[pCounter*4+1]); 
+
+
+
+        bVPSNum[pCounter]=*bVNumSum;
+        bVNum[pCounter++]=fNum;
+
+
+        if(fNum>maxV)maxV=fNum;
+    }
+    
+    fclose(fid1);
+    printf("\nMaximum number of vertices in this set of polygons is : %d\n",maxV);
+    return pCounter;
+}
+//==============================================================================
 
  
 

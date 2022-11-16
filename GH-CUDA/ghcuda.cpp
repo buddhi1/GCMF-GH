@@ -15,7 +15,7 @@ int argn;
 string outputFile=string("results/Fig-def-R.poly");
 
 // read from shape files
-void readInputFromShapeFiles(double **baseCoords, double **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
+void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
   int sizeP=PPTmp[PPID].size, sizeQ=QQTmp[QQID].size;
   if(sizeP<sizeQ){
     PP.push_back(QQTmp[QQID]);
@@ -41,8 +41,8 @@ void readInputFromShapeFiles(double **baseCoords, double **overlayCoords, string
     }
   }
 
-  *baseCoords=(double *)malloc(2*sizeP*sizeof(double));
-  *overlayCoords=(double *)malloc(2*sizeQ*sizeof(double));
+  *baseCoords=(coord_t *)malloc(2*sizeP*sizeof(coord_t));
+  *overlayCoords=(coord_t *)malloc(2*sizeQ*sizeof(coord_t));
 
   int i=0;
   // copy polygon P values
@@ -151,7 +151,7 @@ void readPolygons(int argc, char* argv[], double **baseCoords, double **overlayC
 }
 
 // handles polygons without holes
-void regularPolygonHandler(double *baseCoord, double *overlayCoords){
+void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   // -------------------------------------------------------------------------------------------
   // PHASE:2 calculate intersections using GPU acceleration
   // -------------------------------------------------------------------------------------------
@@ -254,7 +254,7 @@ void regularPolygonHandler(double *baseCoord, double *overlayCoords){
   free(cmbr);
 }
 
-void GH_CUDA(double *baseCoords, double *overlayCoords){
+void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
   high_resolution_clock::time_point start, end, start1, end1, start2, end2, start3, end3;
 
   if(DEBUG_TIMING) start = high_resolution_clock::now();
@@ -294,32 +294,11 @@ void GH_CUDA(double *baseCoords, double *overlayCoords){
   }
 }
 
-int ghcuda(int PPID_list[], int QQID_list[]){
-// int main(int argc, char* argv[]){
-
-  double *baseCoords, *overlayCoords;
-  // [0, 36, 2742, 2741, 5978, | 2854, 2737]
-  // int PPID_list[]={0, 36}; //ne_10m_ocean
-  int PPID=36;  //defines the end of file. Use -1 to read the complete file
-  string inputShp1=string("../datasets/ne_10m_ocean.csv");
-  loadPolygonFromShapeFile2(PPTmp, inputShp1, PPID+1);
-
-  // [521, 1048, 1202, 1661, 1886, | 1524, 54, 1081, 1193]
-  // string inputShp2=string("../datasets/continents.csv");
-  // int QQID=521; //continents
-  // loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
-
-  // time these for paper
-  // ocean, land [2742, 30] [2742, 42]
-  // [4, 1, 0, 33, 30, 3, | 42, 25, 8, 19]
-  string inputShp2=string("../datasets/ne_10m_land.csv");
-  // int QQID_list[]={4, 1}; //ne_10m_land
-  int QQID=4;  //defines the end of file. Use -1 to read the complete file
-  loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
-  // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, PPID, inputShp2, QQID);
-
-  for(int cid=0; cid<2; ++cid){
-    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, PPID_list[cid], inputShp2, QQID_list[cid]);
+int ghcuda(int PPID_list[], int QQID_list[], int totalNumPairs,
+          coord_t *baseCoords, coord_t *overlayCoords, 
+          int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
+  
+  for(int cid=0; cid<totalNumPairs; ++cid){
     GH_CUDA(baseCoords, overlayCoords);
     free(baseCoords);
     free(overlayCoords);
@@ -329,3 +308,42 @@ int ghcuda(int PPID_list[], int QQID_list[]){
   
   return 0;
 }
+
+// =========================================================================================================
+// Old main method. GCMF does not need I/O read anymore from GH code. I/O is reused from the GCMF file read
+
+// int ghcuda(int PPID_list[], int QQID_list[], int totalNumPairs){
+// int main(int argc, char* argv[]){
+
+//   double *baseCoords, *overlayCoords;
+//   // [0, 36, 2742, 2741, 5978, | 2854, 2737]
+//   int PPID_list[]={0, 36}; //ne_10m_ocean
+//   int PPID=-2;  //defines the end of file. Use -1 to read the complete file
+//   string inputShp1=string("../datasets/ne_10m_ocean.csv");
+  // loadPolygonFromShapeFile2(PPTmp, inputShp1, PPID+1);
+
+//   // [521, 1048, 1202, 1661, 1886, | 1524, 54, 1081, 1193]
+//   // string inputShp2=string("../datasets/continents.csv");
+//   // int QQID=521; //continents
+//   // loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
+
+//   // time these for paper
+//   // ocean, land [2742, 30] [2742, 42]
+//   // [4, 1, 0, 33, 30, 3, | 42, 25, 8, 19]
+//   string inputShp2=string("../datasets/ne_10m_land.csv");
+//   int QQID_list[]={4, 1}; //ne_10m_land
+//   int QQID=-2;  //defines the end of file. Use -1 to read the complete file
+//   loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
+//   // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, PPID, inputShp2, QQID);
+
+//   for(int cid=0; cid<2; ++cid){
+//     readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, PPID_list[cid], inputShp2, QQID_list[cid]);
+//     GH_CUDA(baseCoords, overlayCoords);
+//     free(baseCoords);
+//     free(overlayCoords);
+//     PP.clear();
+//     QQ.clear();
+//   }
+  
+//   return 0;
+// }

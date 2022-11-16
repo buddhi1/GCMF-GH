@@ -481,3 +481,23 @@ void PrintJoin(int* actualEdgeCrossCounter, int* jCompactVector, long pairNum){
 }
 //==============================================================================
 
+// ---------------------------- Buddhi: For GH merge -------------------------------------------------
+
+//======================= Copy pairs to CPU ========================
+void CopyPairsToCPU(int *PPID_list, int *QQID_list, long *totalPairNum, int* gpuVector, int* gpuFlag, long pairNum){
+   int *vector, *flag, j=0; 
+   CopyFromGPU((void**)&vector, gpuVector, 2*sizeof(int)*pairNum, 1);
+   CopyFromGPU((void**)&flag, gpuFlag, sizeof(int)*pairNum, 1);
+   
+    for(int i=0;i<pairNum;i++)
+        if(flag[i]==1){
+            PPID_list[j]=vector[2*i];
+            QQID_list[j++]=vector[2*i+1];
+        }
+    *totalPairNum=j;
+    printf("Size j=%d %d\n",j, pairNum);
+   free(flag);
+   free(vector);
+   return;
+}
+//==============================================================================

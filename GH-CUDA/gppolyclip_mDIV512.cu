@@ -7,6 +7,8 @@
 
 #include "lib/constants.h"
 
+typedef float coord_t;
+
 typedef struct{
   double x, y;
 } point;
@@ -1172,8 +1174,8 @@ Called from Host
 -------------------------------------------------------------------
 */
 void calculateIntersections(
-                  double *baseCoords, 
-                  double *overlayCoords, 
+                  coord_t *baseCoords, 
+                  coord_t *overlayCoords, 
                   int sizeP, int sizeQ, double *cmbr,
                   int *countNonDegenIntP, int *countNonDegenIntQ, 
                   double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,

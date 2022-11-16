@@ -3,3 +3,4 @@ program
 *.o
 GH-CUDA/results/
 GH-CUDA/data/
+GH-CUDA/*.o

@@ -1,4 +1,6 @@
 #include "GH-CUDA/ghcuda.cpp"
+#include "Types.h"
 
-int spatialJoin(int argc, char* argv[], int **djxyVector_return, int **dPiPFlag_return, long *pairNum_return);
-void CopyFromGPU(void** destinationData, void* sourceData, int dataSize, char isNew);
+int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 
+    coord_t **pBaseCoords, coord_t **pOverlaycoords, 
+    int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum);
