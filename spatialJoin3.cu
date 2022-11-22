@@ -11,6 +11,7 @@
 #include "Join.h"
 
 // #include "GH-CUDA/ghcuda.cpp"
+// #include "GH-CUDA/lib/polyclip.cpp"
 
 cudaEvent_t start_GPU, stop_GPU;
 
@@ -38,8 +39,7 @@ void copyPolygon(
 // int main(int argc, char* argv[]){  
 int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 
     coord_t **pBaseCoords, coord_t **pOverlaycoords, 
-    int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum,
-    vector<polygon> &PP, vector<polygon> &QQ){  
+    int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum){  
 
     float Join_Total_Time_SEQ=0, Join_Total_Time_GPU=0;
     cudaError_t cudaMemError;
@@ -123,9 +123,9 @@ Second user input: dimSelect
          printf("\nDataset: postal - sports\n");
          break;
     }
-    bPolNum=ReadTextFormatPolygon2WithVector(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE, PP);    
+    bPolNum=ReadTextFormatPolygon2WithVector(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE);    
     printf("\n%lu Polygons with %lu vertices in total.\n",bPolNum,bVNumSum);
-    oPolNum=ReadTextFormatPolygon2WithVector(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY, QQ); 
+    oPolNum=ReadTextFormatPolygon2WithVector(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY); 
     printf("\n%lu Polygons with %lu vertices in total.\n",oPolNum,oVNumSum);
 
 

@@ -10,9 +10,11 @@
 #include <iostream>
 #include <cassert>
 
+#include "../../Types.h"
+
 using namespace std;
 
-typedef double coord_t;
+
 
 
 ////////////////////////////////////////////////////////////////////////

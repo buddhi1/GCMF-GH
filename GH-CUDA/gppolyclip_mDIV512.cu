@@ -380,7 +380,7 @@ Called from Host
 -------------------------------------------------------------------
 */
 __global__ void gpuCMBRFilter(
-                double *coords, 
+                coord_t *coords, 
                 double cmbrMinX, double cmbrMinY, double cmbrMaxX, double cmbrMaxY,
                 int size, int *boolPs, int *ps1, int *ps2){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
@@ -451,8 +451,8 @@ Called from Host
 -------------------------------------------------------------------
 */
 __global__ void gpuCountIntersections(
-                  double *bCoords, 
-                  double *oCoords, 
+                  coord_t *bCoords, 
+                  coord_t *oCoords, 
                   int sizeP, int sizeQ,
                   int *psP1, int *psP2, int *boolPIndex){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
@@ -528,8 +528,8 @@ __global__ void gpuCountIntersections(
   }
 }
 __global__ void gpuNeighborMap(
-                  double *bCoords, 
-                  double *oCoords, 
+                  coord_t *bCoords, 
+                  coord_t *oCoords, 
                   int sizeP, int sizeQ, 
                   int *psP1, int *psQ1, int *psQ2,
                   int *neighborMapQ){
@@ -858,8 +858,8 @@ __global__ void gpuCalculateIntersections(
 }*/
 
 __global__ void gpuCalculateIntersections(
-                  double *bCoords, 
-                  double *oCoords, 
+                  coord_t *bCoords, 
+                  coord_t *oCoords, 
                   int sizeP, int sizeQ, 
                   int *psP1, int *psP2, int *psQ1, int *psQ2, 
                   double *intersectionsP, double *intersectionsQ, double *intersectionsP2, double *intersectionsQ2,
@@ -1181,7 +1181,7 @@ void calculateIntersections(
                   double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,
                   int **initLabelsP, int **initLabelsQ,
                   int **neighborP, int **neighborQ){
-    double *bCoords, *oCoords;
+    coord_t *bCoords, *oCoords;
     int *dev_psP1, *dev_psP2, *dev_psQ1, *dev_psQ2, *dev_boolPsPX, *dev_boolPsQX, *dev_boolPX, *dev_boolQX;
     int psP1[sizeP+1], psP2[sizeP+1], psQ1[sizeQ+1], psQ2[sizeQ+1];
     int boolPsPX[sizeP+1], boolPsQX[sizeQ+1];
@@ -1197,8 +1197,8 @@ void calculateIntersections(
         cudaEventCreate(&kernelStart0);
         cudaEventCreate(&kernelStop0);
     }
-    cudaMalloc((void **) &bCoords, 2*sizeP*sizeof(double));
-    cudaMalloc((void **) &oCoords, 2*sizeQ*sizeof(double));
+    cudaMalloc((void **) &bCoords, 2*sizeP*sizeof(coord_t));
+    cudaMalloc((void **) &oCoords, 2*sizeQ*sizeof(coord_t));
     cudaMalloc((void **) &dev_psP1, (sizeP+1)*sizeof(int));
     cudaMalloc((void **) &dev_psP2, (sizeP+1)*sizeof(int));
     cudaMalloc((void **) &dev_psQ1, (sizeQ+1)*sizeof(int));
@@ -1210,8 +1210,8 @@ void calculateIntersections(
     cudaMalloc((void **) &dev_boolPsQX, (sizeQ+1)*sizeof(int));
 
     // Copy input vectors from host memory to GPU buffers.
-    cudaMemcpy(bCoords, baseCoords, 2*sizeP*sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(oCoords, overlayCoords, 2*sizeQ*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(bCoords, baseCoords, 2*sizeP*sizeof(coord_t), cudaMemcpyHostToDevice);
+    cudaMemcpy(oCoords, overlayCoords, 2*sizeQ*sizeof(coord_t), cudaMemcpyHostToDevice);
 
     int blocksPerGrid=((sizeP+sizeQ) + xThreadPerBlock - 1) / xThreadPerBlock;
     int xBlocksPerGrid=(blocksPerGrid + yBlockPerGrid - 1) / yBlockPerGrid;

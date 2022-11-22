@@ -1,4 +1,4 @@
-#include "GH-CUDA/ghcuda.cpp"
+// #include "GH-CUDA/ghcuda.cpp"
 #include "Types.h"
 
 int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 

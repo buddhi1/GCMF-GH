@@ -1,6 +1,6 @@
 #include "main.h"
 
-// #include "GH-CUDA/ghcuda.cpp"
+#include "GH-CUDA/ghcuda.cpp"
 int main(int argc, char *argv[])
 {
     long totalPairNum;

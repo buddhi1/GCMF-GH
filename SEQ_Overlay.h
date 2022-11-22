@@ -7,8 +7,9 @@
 //#include <mpi.h>
 //#include <shapelib/shapefil.h>
 
-#include "GH-CUDA/lib/polyclip.cpp"
-#include "GH-CUDA/lib/readShapefile.cpp"
+// #include "GH-CUDA/lib/polyclip.cpp"
+// #include "GH-CUDA/lib/readShapefile.cpp"
+#include "GH-CUDA/ghcuda.cpp"
 
 using namespace ClipperLib;
 
@@ -280,7 +281,7 @@ int ReadTextFormatPolygon2(const char* fileName, int* bVNum, long* bVPSNum, mbr_
 
 
 //============================ ReadTextFormatPolygon2 with GH CPU data structure reading =============================
-int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVPSNum, mbr_t* seqMBR, coord_t* seqMBR2, coord_t* baseCoords, long* bVNumSum, char mbrType, int maxPoly, vector<polygon>& PP){
+int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVPSNum, mbr_t* seqMBR, coord_t* seqMBR2, coord_t* baseCoords, long* bVNumSum, char mbrType, int maxPoly){
     int fNum=0, maxV=0;
     FILE *fid1;
     char tkBuff[2][50];
