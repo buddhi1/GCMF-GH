@@ -1,6 +1,11 @@
 // #include "GH-CUDA/ghcuda.cpp"
+#include <iostream>
 #include "Types.h"
 
-int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 
-    coord_t **pBaseCoords, coord_t **pOverlaycoords, 
+int spatialJoin(int argc, char* argv[], int  **pIDList, int **qIDList, long *totalPairNum, 
+    coord_t **pBaseCoords, coord_t **pOverlayCoords, 
     int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum);
+int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
+          coord_t *baseCoords, coord_t *overlayCoords, 
+          int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum);
+ 

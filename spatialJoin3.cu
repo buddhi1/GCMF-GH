@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "GPU_Manage.h"
-#include "Types.h"
+// #include "Types.h"
 #include "Constants.h"
 #include "GPU_Test.h"
 #include "GPU_MBR.h"
@@ -37,8 +37,8 @@ void copyPolygon(
 }
 
 // int main(int argc, char* argv[]){  
-int spatialJoin(int argc, char* argv[], int  **PPID_list, int **QQID_list, long *totalPairNum, 
-    coord_t **pBaseCoords, coord_t **pOverlaycoords, 
+int spatialJoin(int argc, char* argv[], int  **pIDList, int **qIDList, long *totalPairNum, 
+    coord_t **pBaseCoords, coord_t **pOverlayCoords, 
     int **pBVNum, long **pBVPSNum, int **pOVNum, long **pOVPSNum){  
 
     float Join_Total_Time_SEQ=0, Join_Total_Time_GPU=0;
@@ -88,7 +88,7 @@ Second user input: dimSelect
     // =========================================================================
     // Assign additional pointers to the input data arrays to be used in the GH code CPU
     *pBaseCoords=baseCoords;
-    *pOverlaycoords=overlayCoords;
+    *pOverlayCoords=overlayCoords;
     *pBVNum=bVNum;
     *pBVPSNum=bVPSNum;
     *pOVNum=oVNum; 
@@ -123,13 +123,13 @@ Second user input: dimSelect
          printf("\nDataset: postal - sports\n");
          break;
     }
-    bPolNum=ReadTextFormatPolygon2WithVector(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE);    
+    bPolNum=ReadTextFormatPolygon2WithVector(baseFileName,bVNum, bVPSNum, seqMBR, seqMBR2, baseCoords, &bVNumSum, 1, MAX_POLYS_BASE, pPolygons);    
     printf("\n%lu Polygons with %lu vertices in total.\n",bPolNum,bVNumSum);
-    oPolNum=ReadTextFormatPolygon2WithVector(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY); 
+    oPolNum=ReadTextFormatPolygon2WithVector(overlayFileName, oVNum, oVPSNum, seqOMBR, seqOMBR2, overlayCoords, &oVNumSum, 1, MAX_POLYS_OVERLAY, qPolygons); 
     printf("\n%lu Polygons with %lu vertices in total.\n",oPolNum,oVNumSum);
 
-
     //==========================================================================
+    printf("\npPolygons size %d qPolygons size %d\n", pPolygons.size(), qPolygons.size());
 
 //PrintPolygon(baseCoords+2*bVPSNum[1485], bVNum[1486]);
 //printf("\n\n\n");
@@ -395,9 +395,9 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
 //             oVNum, oVPSNum, overlayCoords,
 //             baseID, overlayID);
 
-*PPID_list=(int *)malloc(sizeof(int)*pairNum);
-*QQID_list=(int *)malloc(sizeof(int)*pairNum);
-CopyPairsToCPU(*PPID_list, *QQID_list, totalPairNum, djxyVector, dPiPFlag, pairNum); 
+*pIDList=(int *)malloc(sizeof(int)*pairNum);
+*qIDList=(int *)malloc(sizeof(int)*pairNum);
+CopyPairsToCPU(*pIDList, *qIDList, totalPairNum, djxyVector, dPiPFlag, pairNum); 
 
 cudaThreadExit();
 //==============================================================================

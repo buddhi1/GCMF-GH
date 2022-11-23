@@ -16,8 +16,8 @@
 // #include "point2D.h"
 // #include "polygon.h"
 
-vector<polygon> PPTmp, QQTmp;                 // two input polygons
-vector<vector<double>> PPMBRs, QQMBRs;                 // two input polygons
+vector<polygon> pPolygons, qPolygons;                 // two input polygons
+vector<vector<double>> pPolygonMBRs, qPolygonMBRs;                 // two input polygons
 
 #include <iomanip>
 #include<bits/stdc++.h>
@@ -333,7 +333,7 @@ vector<double> getMBR(polygon pol){
 	return mbr;
 }
 
-void loadPolygonMBRs(vector<vector<double>>& PPMBRs, string s, int endOfFile) {
+void loadPolygonMBRs(vector<vector<double>>& pPolygonMBRs, string s, int endOfFile) {
 	string line;
 	// cout << s << endl;
 	ifstream from(s);
@@ -364,7 +364,7 @@ void loadPolygonMBRs(vector<vector<double>>& PPMBRs, string s, int endOfFile) {
 			vertex2= line.substr(0, line.find("))"));
 			polygonReady=true;
 			polygonStart=false;
-			PPMBRs.push_back(getMBR(P));
+			pPolygonMBRs.push_back(getMBR(P));
 			
 			P = polygon(); 
 			vertexFound=false;
@@ -387,15 +387,15 @@ void loadPolygonMBRs(vector<vector<double>>& PPMBRs, string s, int endOfFile) {
 
 			vertexFound=false;
 		}
-	}while((PPMBRs.size() < endOfFile || endOfFile == -1) && (!from.eof() || endOfFile != -1));
+	}while((pPolygonMBRs.size() < endOfFile || endOfFile == -1) && (!from.eof() || endOfFile != -1));
 
-	// cout << "Num polygons " << PPMBRs.size() << endl;
+	// cout << "Num polygons " << pPolygonMBRs.size() << endl;
 }
 
-void loadPolygonMBRsFromVector(vector<vector<double>>& PPMBRs, vector<polygon>& PP, int endOfFile) {
+void loadPolygonMBRsFromVector(vector<vector<double>>& pPolygonMBRs, vector<polygon>& PP, int endOfFile) {
 	for(int i=0; i<endOfFile; ++i){
-		PPMBRs.push_back(getMBR(PP[i]));
-		printf("%.17g %.17g  %.17g  %.17g \n", PPMBRs[i][0], PPMBRs[i][1], PPMBRs[i][2], PPMBRs[i][3]);
+		pPolygonMBRs.push_back(getMBR(PP[i]));
+		printf("%.17g %.17g  %.17g  %.17g \n", pPolygonMBRs[i][0], pPolygonMBRs[i][1], pPolygonMBRs[i][2], pPolygonMBRs[i][3]);
 		// break;
 	}
 }
@@ -408,27 +408,27 @@ int MySearchCallback(int id, void* arg){
 
 // int main(){
 // 	// Linux path
-// 	loadPolygonFromShapeFile2(PPTmp, string("../../datasets/ne_10m_ocean.csv"), -1);
-// 	loadPolygonFromShapeFile3(QQTmp, string("../../datasets/continents.csv"), -1);
-// 	// cout <<PPTmp.size()<<" polygons found"<<endl;
-// 	// cout <<QQTmp.size()<<" polygons found"<<endl;
+// 	loadPolygonFromShapeFile2(pPolygons, string("../../datasets/ne_10m_ocean.csv"), -1);
+// 	loadPolygonFromShapeFile3(qPolygons, string("../../datasets/continents.csv"), -1);
+// 	// cout <<pPolygons.size()<<" polygons found"<<endl;
+// 	// cout <<qPolygons.size()<<" polygons found"<<endl;
 // 	// WSL / Ubuntu path
-// 	// loadPolygonFromShapeFile(PPTmp, string("/mnt/d//Datasets/sports/sports"), -1);
+// 	// loadPolygonFromShapeFile(pPolygons, string("/mnt/d//Datasets/sports/sports"), -1);
 // 	// loadPolygonFromShapeFile(PP, string("/mnt/d//Datasets/lakes/lakes"), 1);
 
 // 	// load MBRs from the given polygon data
-// 	// loadPolygonMBRs(PPMBRs, string("../../datasets/ne_10m_ocean.csv"), -1);
-// 	// loadPolygonMBRs(PPMBRs, string("../../datasets/continents.csv"), -1);
+// 	// loadPolygonMBRs(pPolygonMBRs, string("../../datasets/ne_10m_ocean.csv"), -1);
+// 	// loadPolygonMBRs(pPolygonMBRs, string("../../datasets/continents.csv"), -1);
 
 // 	// load MBRs from vectors
-// 	// loadPolygonMBRsFromVector(PPMBRs, PPTmp, PPTmp.size());
-// 	// loadPolygonMBRsFromVector(QQMBRs, QQTmp, QQTmp.size());
+// 	// loadPolygonMBRsFromVector(pPolygonMBRs, pPolygons, pPolygons.size());
+// 	// loadPolygonMBRsFromVector(qPolygonMBRs, qPolygons, qPolygons.size());
 
 // 	cout<<"P Polygons" << endl;
 // 	// order polygon files by the number of vertices
 // 	vector<pair <int, int>> vect;
-// 	for (int i=0; i<PPTmp.size(); i++){
-// 		vect.push_back(make_pair(PPTmp[i].size, i));
+// 	for (int i=0; i<pPolygons.size(); i++){
+// 		vect.push_back(make_pair(pPolygons[i].size, i));
 // 	}
 // 	sort(vect.rbegin(), vect.rend());
 // 	// Printing the vector
@@ -440,8 +440,8 @@ int MySearchCallback(int id, void* arg){
 // 	cout<<"Q Polygons" << endl;
 // 	// order polygon files by the number of vertices
 // 	vector<pair <int, int>> vectQ;
-// 	for (int i=0; i<QQTmp.size(); i++){
-// 		vectQ.push_back(make_pair(QQTmp[i].size, i));
+// 	for (int i=0; i<qPolygons.size(); i++){
+// 		vectQ.push_back(make_pair(qPolygons[i].size, i));
 // 	}
 // 	sort(vectQ.rbegin(), vectQ.rend());
 // 	// Printing the vector
@@ -452,12 +452,12 @@ int MySearchCallback(int id, void* arg){
 
 // 	// find polygon with most  number of vertices
 // 	// int maxPolygonLoc = 0;
-// 	// for(int i=1; i<PPTmp.size(); ++i){
-// 	// 	if(PPTmp[i].size > PPTmp[maxPolygonLoc].size){
+// 	// for(int i=1; i<pPolygons.size(); ++i){
+// 	// 	if(pPolygons[i].size > pPolygons[maxPolygonLoc].size){
 // 	// 		maxPolygonLoc=i;
 // 	// 	}
 // 	// }
-// 	// cout << "Largest polygon has " << PPTmp[maxPolygonLoc].size << " Vertices at " << maxPolygonLoc << endl;
+// 	// cout << "Largest polygon has " << pPolygons[maxPolygonLoc].size << " Vertices at " << maxPolygonLoc << endl;
 
 // 	// **use setprecision (15) to show more digits in the given double value in the output on screen
 // 	// cout << ">> " << setprecision (15) << stod("2148.232142373") << endl;

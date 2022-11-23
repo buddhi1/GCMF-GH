@@ -1,3 +1,4 @@
+#include "Types.h"
 
 //----------------------------- PrintGPUVector ----------------------------------
 void GPUPrintVector(int eNum, char* gpuVector, char suppressZero ){

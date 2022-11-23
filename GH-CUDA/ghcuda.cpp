@@ -1,43 +1,42 @@
-#include <iostream>
+// #include <iostream>
 #include<bits/stdc++.h>
-#include <vector>
+// #include <vector>
 #include <chrono>
 
 #include "lib/polyclip.h"
 #include "ghcuda.h"
+#include "lib/readShapefile.h"
 
 using namespace std::chrono;
-
-#include "lib/readShapefile.h"
 
 
 int argn;
 string outputFile=string("results/Fig-def-R.poly");
 
 // read from shape files
-void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
-  int sizeP=PPTmp[PPID].size, sizeQ=QQTmp[QQID].size;
+void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int pID, string inputShp2, int qID){
+  int sizeP=pPolygons[pID].size, sizeQ=qPolygons[qID].size;
   if(sizeP<sizeQ){
-    PP.push_back(QQTmp[QQID]);
-    QQ.push_back(PPTmp[PPID]);
-    sizeP=QQTmp[QQID].size;
-    sizeQ=PPTmp[PPID].size;
+    pPolygon.push_back(qPolygons[qID]);
+    qPolygon.push_back(pPolygons[pID]);
+    sizeP=qPolygons[qID].size;
+    sizeQ=pPolygons[pID].size;
 
     if(DEBUG_INFO_PRINT){
-      cout<<"Shape file1: "<<inputShp1<<" PPID: "<<PPID<<endl;;
-      cout<<"Shape file2: "<<inputShp2<<" QQID: "<<QQID<<endl;
-      cout << "PP and QQ swapped since QQ> PP\nNew PP Polygon size " << sizeP;
-      cout << " New QQ Polygon size " << sizeQ << endl;
+      cout<<"Shape file1: "<<inputShp1<<" pID: "<<pID<<endl;;
+      cout<<"Shape file2: "<<inputShp2<<" qID: "<<qID<<endl;
+      cout << "pPolygon and qPolygon swapped since qPolygon> pPolygon\nNew pPolygon Polygon size " << sizeP;
+      cout << " New qPolygon Polygon size " << sizeQ << endl;
     }
   } else {
-    PP.push_back(PPTmp[PPID]);
-    QQ.push_back(QQTmp[QQID]);
+    pPolygon.push_back(pPolygons[pID]);
+    qPolygon.push_back(qPolygons[qID]);
 
     if(DEBUG_INFO_PRINT){
-      cout<<"Shape file1: "<<inputShp1<<" PPID: "<<PPID<<endl;;
-      cout<<"Shape file2: "<<inputShp2<<" QQID: "<<QQID<<endl;
-      cout << "PP Polygon size " << sizeP;
-      cout << " QQ Polygon size " << sizeQ << endl;
+      cout<<"Shape file1: "<<inputShp1<<" pID: "<<pID<<endl;;
+      cout<<"Shape file2: "<<inputShp2<<" qID: "<<qID<<endl;
+      cout << "pPolygon Polygon size " << sizeP;
+      cout << " qPolygon Polygon size " << sizeQ << endl;
     }
   }
 
@@ -46,30 +45,30 @@ void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, stri
 
   int i=0;
   // copy polygon P values
-  for (vertex* V : PP[0].vertices(ALL)){
+  for (vertex* V : pPolygon[0].vertices(ALL)){
     *(*baseCoords+i++) = V->p.x;
     *(*baseCoords+i++) = V->p.y;
 	}
-  if(DEBUG_INFO_PRINT) cout<<"PP Count "<<i;
+  if(DEBUG_INFO_PRINT) cout<<"pPolygon Count "<<i;
 
   i=0;
   // copy polygon Q values
-  for (vertex* V : QQ[0].vertices(ALL)){
+  for (vertex* V : qPolygon[0].vertices(ALL)){
     *(*overlayCoords+i++) = V->p.x;
     *(*overlayCoords+i++) = V->p.y;
 	}
-  if(DEBUG_INFO_PRINT) cout<<" QQ Count "<<i<<endl;
+  if(DEBUG_INFO_PRINT) cout<<" qPolygon Count "<<i<<endl;
 }
 
-// get CMBR for PP and QQ
+// get CMBR for pPolygon and qPolygon
 void getCMBR(double *cmbr){
   vector<double> PPMBR;
   vector<double> QQMBR;
   // double *cmbr; //minx, miny, maxx, maxy
   double minX, minY, maxX, maxY;
 
-  PPMBR=getMBR(PP[0]);
-  QQMBR=getMBR(QQ[0]);
+  PPMBR=getMBR(pPolygon[0]);
+  QQMBR=getMBR(qPolygon[0]);
 
   if(DEBUG_INFO_PRINT){
     cout<<"MBR_P ["<<PPMBR[0]<<", "<<PPMBR[1]<<", "<<PPMBR[2]<<", "<<PPMBR[3]<<endl;
@@ -96,10 +95,10 @@ void getCMBR(double *cmbr){
 }
 
 // read polygons into vectors
-void readPolygons(int argc, char* argv[], coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int PPID, string inputShp2, int QQID){
+void readPolygons(int argc, char* argv[], coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int pID, string inputShp2, int qID){
   // check input parameters
   if (argc < 4) {
-    readInputFromShapeFiles(baseCoords, overlayCoords, inputShp1, PPID, inputShp2, QQID);
+    readInputFromShapeFiles(baseCoords, overlayCoords, inputShp1, pID, inputShp2, qID);
   }else{
     argn = 1;
     if (string(argv[1]) == "-union") {
@@ -117,33 +116,33 @@ void readPolygons(int argc, char* argv[], coord_t **baseCoords, coord_t **overla
     FILE *pfile, *qfile;
     pfile=fopen(argv[argn++], "r");
     qfile=fopen(argv[argn++], "r");
-    gpc_read_polygon(pfile, baseCoords, &sizeP, "PP");
-    gpc_read_polygon(qfile, overlayCoords, &sizeQ, "QQ");
+    gpc_read_polygon(pfile, baseCoords, &sizeP, "pPolygon");
+    gpc_read_polygon(qfile, overlayCoords, &sizeQ, "qPolygon");
     // */
 
     // -------------------------------------------------------------------------------------------
     // Alternate 2 -> PHASE:1 read input polygons from given XY format with , and ; seperators
     // -------------------------------------------------------------------------------------------
     /*
-    cout << "\nP "; loadPolygon(PP,string(argv[argn++]));
-    cout <<   "Q "; loadPolygon(QQ,string(argv[argn++]));
+    cout << "\nP "; loadPolygon(pPolygon,string(argv[argn++]));
+    cout <<   "Q "; loadPolygon(qPolygon,string(argv[argn++]));
     int i=0;
     // copy polygon P values
-    for (vertex* V : PP[0].vertices(ALL)){
+    for (vertex* V : pPolygon[0].vertices(ALL)){
       *(*polyPX+i) = V->p.x;
       *(*polyPY+i++) = V->p.y;
       // cout << "--- " << setprecision (15) << polyPX[i-1] << ", " << polyPY[i-1] << endl;
     }
-    if(DEBUG_INFO_PRINT) cout<<"PP Count "<<i;
+    if(DEBUG_INFO_PRINT) cout<<"pPolygon Count "<<i;
 
     i=0;
     // copy polygon Q values
-    for (vertex* V : QQ[0].vertices(ALL)){
+    for (vertex* V : qPolygon[0].vertices(ALL)){
       *(*polyQX+i) = V->p.x;
       *(*polyQY+i++) = V->p.y;
       // cout << "--- " << setprecision (15) << V->p.x << endl;
     }
-    if(DEBUG_INFO_PRINT) cout<<" QQ Count "<<i<<endl;
+    if(DEBUG_INFO_PRINT) cout<<" qPolygon Count "<<i<<endl;
     // -------------------------------------------------------------------------------------------
   */
   outputFile=string(argv[argn]);
@@ -166,7 +165,7 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   calculateIntersections(
       baseCoord, 
       overlayCoords, 
-      PP[0].size, QQ[0].size, cmbr, 
+      pPolygon[0].size, qPolygon[0].size, cmbr, 
       &countNonDegenIntP, &countNonDegenIntQ, 
       &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
       &initLabelsP, &initLabelsQ, 
@@ -174,14 +173,14 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   // -------------------------------------------------------------------------------------------
 // return 0;
   // -------------------------------------------------------------------------------------------
-  // Polygon P: (PP)insert intersection vertices and change alpha value in the degenerate cases
+  // Polygon P: (pPolygon)insert intersection vertices and change alpha value in the degenerate cases
   // -------------------------------------------------------------------------------------------
   int i=0, j=0, pi=0;
   int intersectionPArrayMax=countNonDegenIntP*2;
-  PPVertexPointers=new vertex*[countNonDegenIntP];
+  qPolygonVertexPointers=new vertex*[countNonDegenIntP];
 
-  vertex* V=PP[0].root;
-  for(int ii=0; ii<=PP[0].size; ii++){
+  vertex* V=pPolygon[0].root;
+  for(int ii=0; ii<=pPolygon[0].size; ii++){
     current=V;
     while(*(intersectionsP+(i%intersectionPArrayMax))!=V->p.x || *(intersectionsP+((i+1)%intersectionPArrayMax))!=V->p.y){
       tmpVertex=new vertex(*(intersectionsP+i), *(intersectionsP+i+1));
@@ -192,11 +191,11 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
       current->prev->next=tmpVertex;
       tmpVertex->prev=current->prev;
       current->prev=tmpVertex;
-      PPVertexPointers[pi++]=tmpVertex;
+      qPolygonVertexPointers[pi++]=tmpVertex;
       i+=2;
     }
-    if(ii<PP[0].size){ 
-      PPVertexPointers[pi]=V;
+    if(ii<pPolygon[0].size){ 
+      qPolygonVertexPointers[pi]=V;
       pi++;
       V->label=(IntersectionLabel)(*(initLabelsP+(i/2)));
       if(*(alphaValuesP+(i/2))!=-100){
@@ -208,12 +207,12 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
     V=current->next;
   }
   // -------------------------------------------------------------------------------------------
-  // Polygon Q: (QQ)insert intersection vertices and change alpha value in the degenerate cases
+  // Polygon Q: (qPolygon)insert intersection vertices and change alpha value in the degenerate cases
   // -------------------------------------------------------------------------------------------
   i=0;
-  V=QQ[0].root;
+  V=qPolygon[0].root;
   int intersectionQArrayMax=countNonDegenIntQ*2;
-  for(int ii=0; ii<=QQ[0].size; ++ii){
+  for(int ii=0; ii<=qPolygon[0].size; ++ii){
     current=V;
     while(*(intersectionsQ+(i%intersectionQArrayMax))!=V->p.x || *(intersectionsQ+((i+1)%intersectionQArrayMax))!=V->p.y){
       tmpVertex=new vertex(*(intersectionsQ+i), *(intersectionsQ+i+1));
@@ -224,16 +223,16 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
       current->prev->next=tmpVertex;
       tmpVertex->prev=current->prev;
       current->prev=tmpVertex;
-      tmpVertex->neighbour=PPVertexPointers[(*(neighborQ+(i/2)))-1];
-      PPVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=tmpVertex;
+      tmpVertex->neighbour=qPolygonVertexPointers[(*(neighborQ+(i/2)))-1];
+      qPolygonVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=tmpVertex;
       i+=2;
     }
-    if(ii<QQ[0].size){
+    if(ii<qPolygon[0].size){
       V->label=(IntersectionLabel)(*(initLabelsQ+(i/2)));
       if(*(alphaValuesQ+(i/2))!=-100){ 
         V->intersection=true;
-        V->neighbour=PPVertexPointers[(*(neighborQ+(i/2)))-1];
-        PPVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=V;
+        V->neighbour=qPolygonVertexPointers[(*(neighborQ+(i/2)))-1];
+        qPolygonVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=V;
       }
     }
     i+=2;
@@ -280,7 +279,7 @@ void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
   // write output polygon
   if(DEBUG_INFO_PRINT) {
     cout << "R ";
-    savePolygon(RR, outputFile);
+    savePolygon(resultPolygon, outputFile);
   }
   if(DEBUG_TIMING){
     auto duration = duration_cast<microseconds>(end - start);
@@ -294,16 +293,22 @@ void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
   }
 }
 
-int ghcuda(int PPID_list[], int QQID_list[], int totalNumPairs,
+int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
           coord_t *baseCoords, coord_t *overlayCoords, 
           int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
+  printf("\n ghcuda start (from ghcuda.cpp)\n");
+  string inputShp1=string("GCMF data share");
+  string inputShp2=string("GCMF data share");
   
   for(int cid=0; cid<totalNumPairs; ++cid){
+    if(pIDList[cid]==22 || pIDList[cid]==41) continue; //skip list for error handling
+
+    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
     GH_CUDA(baseCoords, overlayCoords);
     free(baseCoords);
     free(overlayCoords);
-    PP.clear();
-    QQ.clear();
+    pPolygon.clear();
+    qPolygon.clear();
   }
   
   return 0;
@@ -312,37 +317,37 @@ int ghcuda(int PPID_list[], int QQID_list[], int totalNumPairs,
 // =========================================================================================================
 // Old main method. GCMF does not need I/O read anymore from GH code. I/O is reused from the GCMF file read
 
-// int ghcuda(int PPID_list[], int QQID_list[], int totalNumPairs){
+// int ghcuda(int pIDList[], int qIDList[], int totalNumPairs){
 /*int main(int argc, char* argv[]){
 
   coord_t *baseCoords, *overlayCoords;
   // [0, 36, 2742, 2741, 5978, | 2854, 2737]
-  int PPID_list[]={0, 36}; //ne_10m_ocean
-  int PPID=36;  //defines the end of file. Use -1 to read the complete file
+  int pIDList[]={0, 36}; //ne_10m_ocean
+  int pID=36;  //defines the end of file. Use -1 to read the complete file
   string inputShp1=string("../../datasets/ne_10m_ocean.csv");
-  loadPolygonFromShapeFile2(PPTmp, inputShp1, PPID+1);
+  loadPolygonFromShapeFile2(pPolygons, inputShp1, pID+1);
 
   // [521, 1048, 1202, 1661, 1886, | 1524, 54, 1081, 1193]
   // string inputShp2=string("../datasets/continents.csv");
-  // int QQID=521; //continents
-  // loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
+  // int qID=521; //continents
+  // loadPolygonFromShapeFile2(qPolygons, inputShp2, qID+1);
 
   // time these for paper
   // ocean, land [2742, 30] [2742, 42]
   // [4, 1, 0, 33, 30, 3, | 42, 25, 8, 19]
   string inputShp2=string("../../datasets/ne_10m_land.csv");
-  int QQID_list[]={4, 1}; //ne_10m_land
-  int QQID=4;  //defines the end of file. Use -1 to read the complete file
-  loadPolygonFromShapeFile2(QQTmp, inputShp2, QQID+1);
-  // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, PPID, inputShp2, QQID);
+  int qIDList[]={4, 1}; //ne_10m_land
+  int qID=4;  //defines the end of file. Use -1 to read the complete file
+  loadPolygonFromShapeFile2(qPolygons, inputShp2, qID+1);
+  // readPolygons(argc, argv, &baseCoords, &overlayCoords, inputShp1, pID, inputShp2, qID);
 
   for(int cid=0; cid<2; ++cid){
-    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, PPID_list[cid], inputShp2, QQID_list[cid]);
+    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
     GH_CUDA(baseCoords, overlayCoords);
     free(baseCoords);
     free(overlayCoords);
-    PP.clear();
-    QQ.clear();
+    pPolygon.clear();
+    qPolygon.clear();
   }
   
   return 0;

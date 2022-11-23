@@ -34,9 +34,9 @@ using namespace std;
 
 #define EPSILON  0.000000001            // tolerance
 
-vector<polygon> PP, QQ; 
-vertex **PPVertexPointers, **QQVertexPointers;                // two input polygons
-vector<polygon> RR;                     // output polygon
+vector<polygon> pPolygon, qPolygon; 
+vertex **pPolygonVertexPointers, **qPolygonVertexPointers;                // two input polygons
+vector<polygon> resultPolygon;                     // output polygon
 
 bool UNION = false;                     // global switch for computing union instead of intersection
 
@@ -198,9 +198,9 @@ void computeIntersections() {
   //
   // loop over the source edges of P and Q
   //
-  for (polygon& P : PP) 
+  for (polygon& P : pPolygon) 
     for (edge edgeP : P.edges(SOURCE))
-      for (polygon& Q : QQ) 
+      for (polygon& Q : qPolygon) 
         for (edge edgeQ : Q.edges(SOURCE)) {
           //
     			// determine intersection or overlap type
@@ -341,7 +341,7 @@ void labelIntersections() {
   int count[2] = {0,0};
   /*
   // loop over intersection vertices of P
-  for (polygon& P : PP) 
+  for (polygon& P : pPolygon) 
     for (vertex* I : P.vertices(INTERSECTION)) {
 
   		// determine local configuration at this intersection vertex
@@ -401,7 +401,7 @@ void labelIntersections() {
   count[0] = count[1] = 0;
 
   // loop over intersection vertices of P
-  for (polygon& P : PP) 
+  for (polygon& P : pPolygon) 
     for (vertex* I : P.vertices(INTERSECTION)) {
       
       // start of an intersection chain ?
@@ -458,7 +458,7 @@ void labelIntersections() {
   // if(DEBUG_INFO_PRINT) cout <<"Label step 3 start"<<endl;
 
   // loop over intersection vertices of P
-  // for (polygon& P : PP) 
+  // for (polygon& P : pPolygon) 
   //   for (vertex* I : P.vertices(INTERSECTION)){
   //     I->neighbour->label = I->label;
   //   }
@@ -476,12 +476,12 @@ void labelIntersections() {
   count[0] = count[1] = 0;
 
   for (int i=0; i<2; ++i) {
-    vector<polygon>* P_or_Q = &PP;      // if i=0, then do it for P w.r.t. Q
-    vector<polygon>* Q_or_P = &QQ;
+    vector<polygon>* P_or_Q = &pPolygon;      // if i=0, then do it for P w.r.t. Q
+    vector<polygon>* Q_or_P = &qPolygon;
 
     if (i==1) {                         // if i=1, then do it for Q w.r.t. P
-      P_or_Q = &QQ; 
-      Q_or_P = &PP;
+      P_or_Q = &qPolygon; 
+      Q_or_P = &pPolygon;
     }
   
     // loop over all components of P (or Q)
@@ -505,7 +505,7 @@ void labelIntersections() {
             if ( Q.pointInPoly(p) )
               isInside = !isInside;              
           if (isInside ^ UNION) {
-            RR.push_back(P);             // -> add P to the result
+            resultPolygon.push_back(P);             // -> add P to the result
             count[0]++;
           }
         }
@@ -516,7 +516,7 @@ void labelIntersections() {
   for (polygon* P : identical[0]) {
     // is P a hole?
     bool P_isHole = false;  
-    for (polygon& P_ : PP)
+    for (polygon& P_ : pPolygon)
       if ( ( P_.root != P->root ) && (P_.pointInPoly(P->root->p)) )
         P_isHole = !P_isHole;
 
@@ -525,13 +525,13 @@ void labelIntersections() {
         if (V == P->root->neighbour) {  // found Q that matches P
           // is Q a hole?
           bool Q_isHole = false;  
-          for (polygon& Q_ : QQ)
+          for (polygon& Q_ : qPolygon)
             if ( ( Q_.root != Q->root ) && (Q_.pointInPoly(Q->root->p)) )
               Q_isHole = !Q_isHole;
 
           // if P and Q are both holes or both are not holes
           if (P_isHole == Q_isHole) {
-            RR.push_back(*P);           // -> add P to the result
+            resultPolygon.push_back(*P);           // -> add P to the result
             count[1]++;
           }          
           goto next_P;
@@ -549,12 +549,12 @@ void labelIntersections() {
   set<vertex*> crossing[2];             // CROSSING vertex candidates for P and Q
 
   for (int i=0; i<2; ++i) {
-    vector<polygon>* P_or_Q = &PP;      // if i=0, then do it for P w.r.t. Q
-    vector<polygon>* Q_or_P = &QQ;
+    vector<polygon>* P_or_Q = &pPolygon;      // if i=0, then do it for P w.r.t. Q
+    vector<polygon>* Q_or_P = &qPolygon;
 
     if (i==1) {                         // if i=1, then do it for Q w.r.t. P
-      P_or_Q = &QQ; 
-      Q_or_P = &PP;
+      P_or_Q = &qPolygon; 
+      Q_or_P = &pPolygon;
     }
   
     // loop over all components of P (or Q)
@@ -749,7 +749,7 @@ void createResult() {
   //       so that they cannot serve as start vertex of another component
   // 
 
-  for (polygon& P : PP) 
+  for (polygon& P : pPolygon) 
     for (vertex* I : P.vertices(CROSSING_INTERSECTION)) {
       polygon R;                         // result polygon component
 
@@ -777,7 +777,7 @@ void createResult() {
         }
       } while (V != I);                   // the result polygon component is complete, 
                                           // if we are back to the initial vertex I
-      RR.push_back(R);
+      resultPolygon.push_back(R);
     }
 }
 //
@@ -790,7 +790,7 @@ void createResult() {
 void cleanUpResult() {
   if(DEBUG_INFO_PRINT) cout << "\nPost-processing...\n\n";
   int count = 0;
-  for (polygon& R : RR) {
+  for (polygon& R : resultPolygon) {
     while ( (R.root != NULL) && (fabs(A(R.root->prev->p,R.root->p,R.root->next->p)) < EPSILON) ) {
       R.removeVertex(R.root);
       count++;
@@ -811,22 +811,22 @@ void cleanUpResult() {
 //
 // prints statistics (#components, #vertices) for a complex polygon
 //
-void printInfo(vector<polygon>& PP) {
+void printInfo(vector<polygon>& pPolygon) {
   int sum = 0;
-  cout << "has "<< PP.size() << " component";
-  if (PP.size() > 1) 
+  cout << "has "<< pPolygon.size() << " component";
+  if (pPolygon.size() > 1) 
     cout << "s";
   cout << " with ";
-  for (int i=0; i<PP.size(); i++) {
+  for (int i=0; i<pPolygon.size(); i++) {
     int count = 0;
-    for (vertex* V : PP[i].vertices(ALL))
+    for (vertex* V : pPolygon[i].vertices(ALL))
       count++;
     cout << count;
-    if (i<PP.size()-1) 
+    if (i<pPolygon.size()-1) 
       cout << " + ";
     sum += count;
   }
-  if (PP.size() > 1)
+  if (pPolygon.size() > 1)
     cout << " = " << sum;
   cout << " vertices\n\n";
 }
@@ -837,16 +837,16 @@ void printInfo(vector<polygon>& PP) {
 //
 // load complex polygon P from file "s" and print statistics
 //
-void loadPolygon(vector<polygon>& PP, string s) {
+void loadPolygon(vector<polygon>& pPolygon, string s) {
   ifstream from(s);
   do {
     polygon P;
     from >> P;
     if (!from.fail())
-      PP.push_back(P);
+      pPolygon.push_back(P);
   } while (!from.eof());
   from.close();
-  if(DEBUG_INFO_PRINT) printInfo(PP);
+  if(DEBUG_INFO_PRINT) printInfo(pPolygon);
 }
 //
 ////////////////////////////////////////////////////////////////////////
@@ -855,12 +855,12 @@ void loadPolygon(vector<polygon>& PP, string s) {
 //
 // save complex polygon P to file "s" and print statistics
 //
-void savePolygon(vector<polygon>& PP, string s) {
+void savePolygon(vector<polygon>& pPolygon, string s) {
   ofstream to(s);
-  for (polygon& P : PP)
+  for (polygon& P : pPolygon)
     to << P;
   to.close();
-  if(DEBUG_INFO_PRINT) printInfo(PP);
+  if(DEBUG_INFO_PRINT) printInfo(pPolygon);
 }
 //
 ////////////////////////////////////////////////////////////////////////
@@ -887,8 +887,8 @@ void savePolygon(vector<polygon>& PP, string s) {
 //     //                    p->contour[0].vertex[v].y );
 //   }
 //   // P.numVertices=*size;
-//   if(polyName=="PP") PP.push_back(P);
-//   else QQ.push_back(P);
+//   if(polyName=="pPolygon") pPolygon.push_back(P);
+//   else qPolygon.push_back(P);
 //   if(DEBUG_INFO_PRINT) printf("Polygon %s with %d vertices reading completed!\n", polyName.c_str(), *size);
 // }
 
@@ -916,8 +916,8 @@ void gpc_read_polygon(FILE *fp, coord_t **coords, int *size, string polyName){
     //                    p->contour[0].vertex[v].y );
   }
   // P.numVertices=*size;
-  if(polyName=="PP") PP.push_back(P);
-  else QQ.push_back(P);
+  if(polyName=="pPolygon") pPolygon.push_back(P);
+  else qPolygon.push_back(P);
   if(DEBUG_INFO_PRINT) printf("Polygon %s with %d vertices reading completed!\n", polyName.c_str(), *size);
 }
 
@@ -940,8 +940,8 @@ void gpc_read_polygon(FILE *fp, coord_t **coords, int *size, string polyName){
 //   }
 
 //   // read input polygons
-//   cout << "\nP "; loadPolygon(PP,string(argv[argn++]));
-//   cout <<   "Q "; loadPolygon(QQ,string(argv[argn++]));
+//   cout << "\nP "; loadPolygon(pPolygon,string(argv[argn++]));
+//   cout <<   "Q "; loadPolygon(qPolygon,string(argv[argn++]));
   
 //   // phase 1
 //   computeIntersections();  
@@ -956,5 +956,5 @@ void gpc_read_polygon(FILE *fp, coord_t **coords, int *size, string polyName){
 //   cleanUpResult();
   
 //   // write output polygon
-//   cout << "R "; savePolygon(RR,string(argv[argn]));
+//   cout << "R "; savePolygon(resultPolygon,string(argv[argn]));
 // }

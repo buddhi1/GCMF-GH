@@ -281,7 +281,7 @@ int ReadTextFormatPolygon2(const char* fileName, int* bVNum, long* bVPSNum, mbr_
 
 
 //============================ ReadTextFormatPolygon2 with GH CPU data structure reading =============================
-int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVPSNum, mbr_t* seqMBR, coord_t* seqMBR2, coord_t* baseCoords, long* bVNumSum, char mbrType, int maxPoly){
+int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVPSNum, mbr_t* seqMBR, coord_t* seqMBR2, coord_t* baseCoords, long* bVNumSum, char mbrType, int maxPoly, vector<polygon> &polygons){
     int fNum=0, maxV=0;
     FILE *fid1;
     char tkBuff[2][50];
@@ -349,7 +349,7 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
 
         *bVNumSum+=fNum;
         // ---------------------- FOR GH CPU data structure: start ----------------------
-        PP.push_back(P);
+        polygons.push_back(P);
         P=polygon();
         // ---------------------- FOR GH CPU data structure: end ----------------------
 
@@ -365,7 +365,7 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
 
         if(fNum>maxV)maxV=fNum;
     }
-    
+    // printf("\n**Polygons vector size %d (print from SEQ_Overlay.h)**\n", polygons.size());
     fclose(fid1);
     printf("\nMaximum number of vertices in this set of polygons is : %d\n",maxV);
     return pCounter;
