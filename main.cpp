@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
     //remove this line to intersect all candidate pairs. 
     // Defines a small pair set for debugging
-    totalPairNum=30; 
+    // totalPairNum=30; 
 
     for(int i=0; i<totalPairNum; ++i){
         cout<<*(pIDList+i)<<", "<<*(qIDList+i)<<endl;

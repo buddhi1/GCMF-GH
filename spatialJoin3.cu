@@ -85,15 +85,6 @@ Second user input: dimSelect
     coord_t* seqMBR2=(coord_t*)malloc(MAX_POLYS_BASE*4*sizeof(coord_t));
     coord_t* seqOMBR2=(coord_t*)malloc(MAX_POLYS_OVERLAY*4*sizeof(coord_t));
 
-    // =========================================================================
-    // Assign additional pointers to the input data arrays to be used in the GH code CPU
-    *pBaseCoords=baseCoords;
-    *pOverlayCoords=overlayCoords;
-    *pBVNum=bVNum;
-    *pBVPSNum=bVPSNum;
-    *pOVNum=oVNum; 
-    *pOVPSNum=oVPSNum;
-    // =========================================================================
     //=================== Reading First(base) Polygon ==========================
 
     char baseFileName[100], overlayFileName[100];
@@ -395,11 +386,21 @@ overlayCoords[] oCoords[]:coordinates of overlay polygon {x_i, y_i} pairs in the
 //             oVNum, oVPSNum, overlayCoords,
 //             baseID, overlayID);
 
+    // =========================================================================
+    // Assign additional pointers to the input data arrays to be used in the GH code CPU
+    *pBaseCoords=bCoords;
+    *pOverlayCoords=oCoords;
+    *pBVNum=dbVNum;
+    *pBVPSNum=dbVPSNum;
+    *pOVNum=doVNum; 
+    *pOVPSNum=doVPSNum;
+    // =========================================================================
+
 *pIDList=(int *)malloc(sizeof(int)*pairNum);
 *qIDList=(int *)malloc(sizeof(int)*pairNum);
 CopyPairsToCPU(*pIDList, *qIDList, totalPairNum, djxyVector, dPiPFlag, pairNum); 
 
-cudaThreadExit();
+// cudaThreadExit(); ********** resets cuda environment
 //==============================================================================
 return 0;
 }

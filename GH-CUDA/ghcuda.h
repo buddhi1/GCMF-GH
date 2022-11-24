@@ -7,6 +7,7 @@ void calculateIntersections(
                 coord_t *baseCoord, 
                 coord_t *overlayCoords, 
                 int sizeP, int sizeQ, double *cmbr,
+                int *dbVNum, long *dbVPSNum, int *doVNum, long *doVPSNum, int bPID, int oPID,
                 int *countNonDegenIntP, int *countNonDegenIntQ, 
                 double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,
                 int **initLabelsP, int **initLabelsQ,

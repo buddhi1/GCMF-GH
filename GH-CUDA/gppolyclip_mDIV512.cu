@@ -380,18 +380,26 @@ Called from Host
 -------------------------------------------------------------------
 */
 __global__ void gpuCMBRFilter(
-                coord_t *coords, 
+                coord_t *coords, long *dVPSNum, int pID,
                 double cmbrMinX, double cmbrMinY, double cmbrMaxX, double cmbrMaxY,
                 int size, int *boolPs, int *ps1, int *ps2){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  int id2=2*id;
-  if(id>size) return;
+  if(id>=size) return;
+  
+  int indexStart=2*(dVPSNum[pID]-size);
+  int id2=2*id+indexStart;
   
   point P1, P2;
   P1.x=coords[id2];
   P1.y=coords[id2+1];
-  P2.x=coords[(id2+2)%(2*size)];
-  P2.y=coords[(id2+3)%(2*size)];
+
+  if(id==size-1){
+    P2.x=coords[indexStart];
+    P2.y=coords[indexStart+1];
+  } else{
+    P2.x=coords[id2+2];
+    P2.y=coords[id2+3];
+  }
 
   double minX=getMin(P1.x, P2.x), minY=getMin(P1.y, P2.y);
   double maxX=getMax(P1.x, P2.x), maxY=getMax(P1.y, P2.y);
@@ -419,7 +427,7 @@ __global__ void gpuSaveCMBRIntersectedIndicies(
                 int size, int *boolPol, int *boolPs){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
   int id2=2*id;
-  if(id>size) return;
+  if(id>=size) return;
   
   point P1, P2;
   P1.x=polyX[id2];
@@ -451,12 +459,15 @@ Called from Host
 -------------------------------------------------------------------
 */
 __global__ void gpuCountIntersections(
-                  coord_t *bCoords, 
-                  coord_t *oCoords, 
+                  coord_t *bCoords, long *dbVPSNum, int bpID,
+                  coord_t *oCoords, long *doVPSNum, int opID,
                   int sizeP, int sizeQ,
                   int *psP1, int *psP2, int *boolPIndex){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  int id2=2*id;
+  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
+  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
+
+  int id2=2*id+bStartIndex;
   int idx=threadIdx.x;  
   __shared__ double poly2X_shared[MAX_POLY2_SIZE+1], poly2Y_shared[MAX_POLY2_SIZE+1] /*+1 for halo next*/;
   double alpha;
@@ -470,8 +481,13 @@ __global__ void gpuCountIntersections(
   if(id<sizeP){
     P1.x = bCoords[id2];
     P1.y = bCoords[id2+1];
-    P2.x = bCoords[(id2+2)%(2*sizeP)];
-    P2.y = bCoords[(id2+3)%(2*sizeP)];
+    if(id==sizeP-1){
+      P2.x = bCoords[bStartIndex];
+      P2.y = bCoords[bStartIndex+1];
+    }else{
+      P2.x = bCoords[id2+2];
+      P2.y = bCoords[id2+3];
+    }
   }
   for(int tileId=0; tileId<tiles; tileId++){
     size=MAX_POLY2_SIZE;
@@ -483,11 +499,11 @@ __global__ void gpuCountIntersections(
     for(int localId=0; localId<tileCellsPerThread; ++localId){
       if(tileId!=tiles-1 || (tileId==tiles-1 && idx<size)){
         // load data into shared memory collaboratively
-        poly2X_shared[idx+(blockDim.x*localId)]=oCoords[2*(idx+(blockDim.x*localId)+(tileId*MAX_POLY2_SIZE))];
-        poly2Y_shared[idx+(blockDim.x*localId)]=oCoords[2*(idx+(blockDim.x*localId)+(tileId*MAX_POLY2_SIZE))+1];
+        poly2X_shared[idx+(blockDim.x*localId)]=oCoords[oStartIndex+2*(idx+(blockDim.x*localId)+(tileId*MAX_POLY2_SIZE))];
+        poly2Y_shared[idx+(blockDim.x*localId)]=oCoords[oStartIndex+2*(idx+(blockDim.x*localId)+(tileId*MAX_POLY2_SIZE))+1];
         if(tileId!=tiles-1 && idx==blockDim.x-1 && localId==tileCellsPerThread-1){
-          poly2X_shared[idx+(blockDim.x*localId)+1]=oCoords[2*(idx+(blockDim.x*localId)+1+(tileId*MAX_POLY2_SIZE))];
-          poly2Y_shared[idx+(blockDim.x*localId)+1]=oCoords[2*(idx+(blockDim.x*localId)+1+(tileId*MAX_POLY2_SIZE))+1];
+          poly2X_shared[idx+(blockDim.x*localId)+1]=oCoords[oStartIndex+2*(idx+(blockDim.x*localId)+1+(tileId*MAX_POLY2_SIZE))];
+          poly2Y_shared[idx+(blockDim.x*localId)+1]=oCoords[oStartIndex+2*(idx+(blockDim.x*localId)+1+(tileId*MAX_POLY2_SIZE))+1];
         }
       }
     } 
@@ -500,8 +516,8 @@ __global__ void gpuCountIntersections(
         Q1.y = poly2Y_shared[qid];
         // reset P2 vertex of last edge to first vertex
         if(tileId==tiles-1 && qid==size-1){
-          Q2.x=oCoords[0];
-          Q2.y=oCoords[1];
+          Q2.x=oCoords[oStartIndex];
+          Q2.y=oCoords[oStartIndex+1];
         }else{
           Q2.x=poly2X_shared[qid+1];
           Q2.y=poly2Y_shared[qid+1];
@@ -528,13 +544,16 @@ __global__ void gpuCountIntersections(
   }
 }
 __global__ void gpuNeighborMap(
-                  coord_t *bCoords, 
-                  coord_t *oCoords, 
+                  coord_t *bCoords, long *dbVPSNum, int bpID,
+                  coord_t *oCoords, long *doVPSNum, int opID,
                   int sizeP, int sizeQ, 
                   int *psP1, int *psQ1, int *psQ2,
                   int *neighborMapQ){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  int id2=2*id;
+  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
+  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
+
+  int id2=2*id+oStartIndex;
   double alpha;
   double beta;
   point I;
@@ -553,17 +572,27 @@ __global__ void gpuNeighborMap(
 
     P1.x = oCoords[id2];
     P1.y = oCoords[id2+1];
-    P2.x = oCoords[(id2+2)%(2*sizeQ)];
-    P2.y = oCoords[(id2+3)%(2*sizeQ)];
+    if(id>=sizeQ-1){
+      P2.x = oCoords[oStartIndex];
+      P2.y = oCoords[oStartIndex];
+    }else{
+      P2.x = oCoords[id2+2];
+      P2.y = oCoords[id2+3];
+    }
 
-    for(int qid=0, qid2=0; qid<sizeP; qid++, qid2+=2){        
+    for(int qid=0, qid2=bStartIndex; qid<sizeP; qid++, qid2+=2){        
       // prefix sum filter: check if the current edge has any intersection count      
       if(psP1[qid+1]!=psP1[qid])
       {
         Q1.x = bCoords[qid2];
         Q1.y = bCoords[qid2+1];
-        Q2.x = bCoords[(qid2+2)%(2*sizeP)];
-        Q2.y = bCoords[(qid2+3)%(2*sizeP)];
+        if(qid>=sizeP-1){
+          P2.x = bCoords[bStartIndex];
+          P2.y = bCoords[bStartIndex+1];
+        }else{
+          P2.x = bCoords[qid2+2];
+          P2.y = bCoords[qid2+3];
+        }
 
         if(gpuLSMF(P1, P2, Q1, Q2))
         {
@@ -858,8 +887,8 @@ __global__ void gpuCalculateIntersections(
 }*/
 
 __global__ void gpuCalculateIntersections(
-                  coord_t *bCoords, 
-                  coord_t *oCoords, 
+                  coord_t *bCoords, long *dbVPSNum, int bpID,
+                  coord_t *oCoords, long *doVPSNum, int opID,
                   int sizeP, int sizeQ, 
                   int *psP1, int *psP2, int *psQ1, int *psQ2, 
                   double *intersectionsP, double *intersectionsQ, double *intersectionsP2, double *intersectionsQ2,
@@ -876,19 +905,23 @@ __global__ void gpuCalculateIntersections(
 
   point P1, P2, Q1, Q2;
   int pid=id;
-  int pid2=2*pid;
 
-  intersectionsP[psP2[pid]*2]=bCoords[pid2];       //consider edge for the intersection array
-  intersectionsP[psP2[pid]*2+1]=bCoords[pid2+1];
-  intersectionsP2[psP2[pid]*2]=bCoords[pid2];       //consider edge for the intersection array
-  intersectionsP2[psP2[pid]*2+1]=bCoords[pid2+1];
+  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
+  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
+  int bid2=2*pid+bStartIndex;
+  int oid2=2*pid+oStartIndex;
+
+  intersectionsP[psP2[pid]*2]=bCoords[bid2];       //consider edge for the intersection array
+  intersectionsP[psP2[pid]*2+1]=bCoords[bid2+1];
+  intersectionsP2[psP2[pid]*2]=bCoords[bid2];       //consider edge for the intersection array
+  intersectionsP2[psP2[pid]*2+1]=bCoords[bid2+1];
   alphaValuesP[psP2[pid]]=-100;
 
   if(id<sizeQ){
-    intersectionsQ[psQ2[pid]*2]=oCoords[pid2];       //consider edge for the intersection array
-    intersectionsQ[psQ2[pid]*2+1]=oCoords[pid2+1];
-    intersectionsQ2[psQ2[pid]*2]=oCoords[pid2];       //consider edge for the intersection array
-    intersectionsQ2[psQ2[pid]*2+1]=oCoords[pid2+1];
+    intersectionsQ[psQ2[pid]*2]=oCoords[oid2];       //consider edge for the intersection array
+    intersectionsQ[psQ2[pid]*2+1]=oCoords[oid2+1];
+    intersectionsQ2[psQ2[pid]*2]=oCoords[oid2];       //consider edge for the intersection array
+    intersectionsQ2[psQ2[pid]*2+1]=oCoords[oid2+1];
   }
 
   // prefix sum filter: check if the current edge has any intersection count      
@@ -896,12 +929,20 @@ __global__ void gpuCalculateIntersections(
   // CMBR filter followed by prefix sum filter
   // if(boolPIndex[id] && psP1[id+1]!=psP1[id])
   {
-    P1.x = bCoords[pid2];
-    P1.y = bCoords[pid2+1];
-    P2.x = bCoords[(pid2+2)%(2*sizeP)];
-    P2.y = bCoords[(pid2+3)%(2*sizeP)];
+    P1.x = bCoords[bid2];
+    P1.y = bCoords[bid2+1];
 
-    for(int qid=0, qid2=0; qid<sizeQ; qid++, qid2+=2){
+    if(id>=sizeP-1){
+      P2.x = bCoords[bStartIndex];
+      P2.y = bCoords[bStartIndex+1];
+    }else{
+      P2.x = bCoords[bid2+2];
+      P2.y = bCoords[bid2+3];
+    }
+    // P2.x = bCoords[(bid2+2)%(2*sizeP)];
+    // P2.y = bCoords[(bid2+3)%(2*sizeP)];
+
+    for(int qid=0, qid2=oStartIndex; qid<sizeQ; qid++, qid2+=2){
       // prefix sum filter: check if the current edge has any intersection count      
       if(psQ1[qid+1]!=psQ1[qid])
       // CMBR filter followed by prefix sum filter
@@ -909,8 +950,16 @@ __global__ void gpuCalculateIntersections(
       {
         Q1.x = oCoords[qid2];
         Q1.y = oCoords[qid2+1];
-        Q2.x = oCoords[(qid2+2)%(2*sizeQ)];
-        Q2.y = oCoords[(qid2+3)%(2*sizeQ)];
+        
+        if(qid>=sizeQ-1){
+          P2.x = oCoords[oStartIndex];
+          P2.y = oCoords[oStartIndex+1];
+        }else{
+          P2.x = oCoords[bid2+2];
+          P2.y = oCoords[bid2+3];
+        }
+        // Q2.x = oCoords[(qid2+2)%(2*sizeQ)];
+        // Q2.y = oCoords[(qid2+3)%(2*sizeQ)];
 
         if(gpuLSMF(P1, P2, Q1, Q2))
         {
@@ -1174,14 +1223,15 @@ Called from Host
 -------------------------------------------------------------------
 */
 void calculateIntersections(
-                  coord_t *baseCoords, 
-                  coord_t *overlayCoords, 
+                  coord_t *bCoords, 
+                  coord_t *oCoords,
                   int sizeP, int sizeQ, double *cmbr,
+                  int *dbVNum, long *dbVPSNum, int *doVNum, long *doVPSNum, int bPID, int oPID, 
                   int *countNonDegenIntP, int *countNonDegenIntQ, 
                   double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,
                   int **initLabelsP, int **initLabelsQ,
                   int **neighborP, int **neighborQ){
-    coord_t *bCoords, *oCoords;
+    // coord_t *bCoords, *oCoords;
     int *dev_psP1, *dev_psP2, *dev_psQ1, *dev_psQ2, *dev_boolPsPX, *dev_boolPsQX, *dev_boolPX, *dev_boolQX;
     int psP1[sizeP+1], psP2[sizeP+1], psQ1[sizeQ+1], psQ2[sizeQ+1];
     int boolPsPX[sizeP+1], boolPsQX[sizeQ+1];
@@ -1197,8 +1247,9 @@ void calculateIntersections(
         cudaEventCreate(&kernelStart0);
         cudaEventCreate(&kernelStop0);
     }
-    cudaMalloc((void **) &bCoords, 2*sizeP*sizeof(coord_t));
-    cudaMalloc((void **) &oCoords, 2*sizeQ*sizeof(coord_t));
+    // cudaMalloc((void **) &bCoords, 2*sizeP*sizeof(coord_t));
+    // cudaMalloc((void **) &oCoords, 2*sizeQ*sizeof(coord_t));
+    
     cudaMalloc((void **) &dev_psP1, (sizeP+1)*sizeof(int));
     cudaMalloc((void **) &dev_psP2, (sizeP+1)*sizeof(int));
     cudaMalloc((void **) &dev_psQ1, (sizeQ+1)*sizeof(int));
@@ -1210,8 +1261,8 @@ void calculateIntersections(
     cudaMalloc((void **) &dev_boolPsQX, (sizeQ+1)*sizeof(int));
 
     // Copy input vectors from host memory to GPU buffers.
-    cudaMemcpy(bCoords, baseCoords, 2*sizeP*sizeof(coord_t), cudaMemcpyHostToDevice);
-    cudaMemcpy(oCoords, overlayCoords, 2*sizeQ*sizeof(coord_t), cudaMemcpyHostToDevice);
+    // cudaMemcpy(bCoords, baseCoords, 2*sizeP*sizeof(coord_t), cudaMemcpyHostToDevice);
+    // cudaMemcpy(oCoords, overlayCoords, 2*sizeQ*sizeof(coord_t), cudaMemcpyHostToDevice);
 
     int blocksPerGrid=((sizeP+sizeQ) + xThreadPerBlock - 1) / xThreadPerBlock;
     int xBlocksPerGrid=(blocksPerGrid + yBlockPerGrid - 1) / yBlockPerGrid;
@@ -1226,16 +1277,15 @@ void calculateIntersections(
     dim3 dimGridP(xBlocksPerGridP, yBlockPerGrid, 1); 
     dim3 dimGridQ(xBlocksPerGridQ, yBlockPerGrid, 1); 
 
-
+    printf("\nsizeP %d sizeQ %d\n", sizeP, sizeQ);
     // CMBR filter 
-
     if(DEBUG_TIMING) cudaEventRecord(kernelStart0);
     gpuCMBRFilter<<<dimGridP, dimBlock>>>(
-                bCoords, 
+                bCoords, dbVPSNum, bPID,
                 cmbr[0], cmbr[1], cmbr[2], cmbr[3],
                 sizeP, dev_boolPsPX, dev_psP1, dev_psP2);
     gpuCMBRFilter<<<dimGridQ, dimBlock>>>(
-                oCoords,  
+                oCoords, doVPSNum, oPID,
                 cmbr[0], cmbr[1], cmbr[2], cmbr[3],
                 sizeQ, dev_boolPsQX, dev_psQ1, dev_psQ2);
 
@@ -1264,8 +1314,8 @@ void calculateIntersections(
 
     if(DEBUG_TIMING) cudaEventRecord(kernelStart1);
     gpuCountIntersections<<<dimGridQ, dimBlock>>>(
-          oCoords, 
-          bCoords, 
+          oCoords, doVPSNum, oPID,
+          bCoords, dbVPSNum, bPID,
           sizeQ, sizeP,
           dev_psQ1, dev_psQ2, dev_boolPsQX);
     
@@ -1280,17 +1330,15 @@ void calculateIntersections(
     if(DEBUG_TIMING) cudaEventRecord(kernelStart12);
 
     gpuCountIntersections<<<dimGridP, dimBlock>>>(
-          bCoords, 
-          oCoords, 
+          bCoords, dbVPSNum, bPID,
+          oCoords, doVPSNum, oPID,
           sizeP, sizeQ,
           dev_psP1, dev_psP2, dev_boolPsPX);
 
     if(DEBUG_TIMING) cudaEventRecord(kernelStop12);
 
     cudaDeviceSynchronize();
-
-    cudaFree(dev_boolPsPX);
-    cudaFree(dev_boolPsQX);
+    // **cudafree
 
     dim3 dimGrid2(xBlocksPerGrid, yBlockPerGrid, 1);
 
@@ -1346,8 +1394,8 @@ void calculateIntersections(
     if(DEBUG_TIMING) cudaEventRecord(kernelStart3);
 
     gpuNeighborMap<<<dimGridQ, dimBlock>>>(
-            bCoords, 
-            oCoords, 
+            bCoords, dbVPSNum, bPID,
+            oCoords, doVPSNum, oPID,
             sizeP, sizeQ,  
             dev_psP1, dev_psQ1, dev_psQ2,
             dev_neighborMapQ);
@@ -1410,8 +1458,8 @@ void calculateIntersections(
 
   if(DEBUG_TIMING) cudaEventRecord(kernelStart4);
   gpuCalculateIntersections<<<dimGridP, dimBlock>>>(
-        bCoords, 
-        oCoords, 
+        bCoords, dbVPSNum, bPID,
+        oCoords, doVPSNum, oPID,
         sizeP, sizeQ, 
         dev_psP1, dev_psP2, dev_psQ1, dev_psQ2, 
         dev_intersectionsP, dev_intersectionsQ, dev_intersectionsP2, dev_intersectionsQ2,
@@ -1423,15 +1471,7 @@ void calculateIntersections(
 
   cudaDeviceSynchronize();
 
-  cudaFree(bCoords);
-  cudaFree(oCoords);
-  cudaFree(dev_neighborMapQ);
-  cudaFree(dev_intersectionsP2);
-  cudaFree(dev_tmpBucketP);
-  cudaFree(dev_alphaSortedIndiciesP);
-  cudaFree(dev_neighborP2);
-  cudaFree(dev_psP1);
-  cudaFree(dev_psQ1);
+// **cudafree
 
   if(DEBUG_TIMING){
     cudaEventCreate(&kernelStart5);
@@ -1449,11 +1489,7 @@ void calculateIntersections(
 
   cudaDeviceSynchronize();
 
-  cudaFree(dev_psQ2);
-  cudaFree(dev_intersectionsQ2);
-  cudaFree(dev_tmpBucketQ);
-  cudaFree(dev_alphaSortedIndiciesQ);
-  cudaFree(dev_neighborQ2);
+// **cudafree
 
   // Phase4: Inital label classificaiton
   cudaMalloc((void **) &dev_initLabelsP, *countNonDegenIntP*sizeof(int));
@@ -1511,23 +1547,48 @@ void calculateIntersections(
     printf("gpuCalculateInitLabel kernel exe time(ms) %f\n\n", kernelTiming6);
   }
 
-  int limitP=10;
-  int limitQ=10;
+  // cleanup
+  cudaFree(dev_boolPsPX);
+  cudaFree(dev_boolPsQX);
+  cudaFree(dev_boolPX);
+  cudaFree(dev_boolQX);
 
+  cudaFree(dev_neighborMapQ);
+  cudaFree(dev_psP1);
+  cudaFree(dev_psQ1);
   cudaFree(dev_psP2);
+  cudaFree(dev_psQ2);
+
+
   cudaFree(dev_intersectionsP);
   cudaFree(dev_intersectionsQ);
+  cudaFree(dev_intersectionsP2);
+  cudaFree(dev_intersectionsQ2);
+
   cudaFree(dev_alphaValuesP);
   cudaFree(dev_alphaValuesQ);
+  cudaFree(dev_tmpBucketP);
+  cudaFree(dev_tmpBucketQ);
+  cudaFree(dev_alphaSortedIndiciesP);
+  cudaFree(dev_alphaSortedIndiciesQ);
+
   cudaFree(dev_neighborP);
   cudaFree(dev_neighborQ);
-  cudaFree(countNonDegenIntP);
-  cudaFree(countNonDegenIntQ);
+  cudaFree(dev_neighborP2);
+  cudaFree(dev_neighborQ2);
+
   cudaFree(dev_initLabelsP);
   cudaFree(dev_initLabelsQ);
 
-  cudaFree(bCoords);
-  cudaFree(oCoords);
+  // free(psP1);
+  // free(psP2);
+  // free(psQ1);
+  // free(psQ2);
+  // free(boolPsPX);
+  // free(boolPsQX);
+  free(neighborMapQ);
+  free(alphaSortedIndiciesP);
+  free(alphaSortedIndiciesQ);
 
-  cudaDeviceReset(); //added to clean resourses
+  // cudaDeviceReset(); //added to clean all resourses
 }

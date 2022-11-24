@@ -60,6 +60,34 @@ void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, stri
   if(DEBUG_INFO_PRINT) cout<<" qPolygon Count "<<i<<endl;
 }
 
+// load polygon data from polygons vector to the single polygon linked list
+void loadPolygonDataFromLayer(int pID, int qID){
+  int sizeP=pPolygons[pID].size, sizeQ=qPolygons[qID].size;
+  if(sizeP<sizeQ){
+    pPolygon.push_back(qPolygons[qID]);
+    qPolygon.push_back(pPolygons[pID]);
+    sizeP=qPolygons[qID].size;
+    sizeQ=pPolygons[pID].size;
+
+    if(DEBUG_INFO_PRINT){
+      cout<<"\nGCMF inout data share: pID: "<<pID<<endl;;
+      cout<<"GCMF inout data share: qID: "<<qID<<endl;
+      cout << "pPolygon and qPolygon swapped since qPolygon> pPolygon\nNew pPolygon Polygon size " << sizeP;
+      cout << " New qPolygon Polygon size " << sizeQ << endl;
+    }
+  } else {
+    pPolygon.push_back(pPolygons[pID]);
+    qPolygon.push_back(qPolygons[qID]);
+
+    if(DEBUG_INFO_PRINT){
+      cout<<"\n*GCMF inout data share: pID: "<<pID<<endl;;
+      cout<<"GCMF inout data share: qID: "<<qID<<endl;
+      cout << "pPolygon Polygon size " << sizeP;
+      cout << " qPolygon Polygon size " << sizeQ << endl;
+    }
+  }
+}
+
 // get CMBR for pPolygon and qPolygon
 void getCMBR(double *cmbr){
   vector<double> PPMBR;
@@ -150,7 +178,8 @@ void readPolygons(int argc, char* argv[], coord_t **baseCoords, coord_t **overla
 }
 
 // handles polygons without holes
-void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
+void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID){
+// void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   // -------------------------------------------------------------------------------------------
   // PHASE:2 calculate intersections using GPU acceleration
   // -------------------------------------------------------------------------------------------
@@ -163,9 +192,10 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   getCMBR(cmbr);
 
   calculateIntersections(
-      baseCoord, 
-      overlayCoords, 
+      bCoord, 
+      oCoords, 
       pPolygon[0].size, qPolygon[0].size, cmbr, 
+      pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID,
       &countNonDegenIntP, &countNonDegenIntQ, 
       &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
       &initLabelsP, &initLabelsQ, 
@@ -178,8 +208,10 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   int i=0, j=0, pi=0;
   int intersectionPArrayMax=countNonDegenIntP*2;
   qPolygonVertexPointers=new vertex*[countNonDegenIntP];
-
   vertex* V=pPolygon[0].root;
+  // printf("\n Polygon P copied \n");
+  // printf("\n root V (%f, %f)\n", V->p.x, V->p.y);
+
   for(int ii=0; ii<=pPolygon[0].size; ii++){
     current=V;
     while(*(intersectionsP+(i%intersectionPArrayMax))!=V->p.x || *(intersectionsP+((i+1)%intersectionPArrayMax))!=V->p.y){
@@ -253,13 +285,14 @@ void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   free(cmbr);
 }
 
-void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
+void GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID){
+// void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
   high_resolution_clock::time_point start, end, start1, end1, start2, end2, start3, end3;
 
   if(DEBUG_TIMING) start = high_resolution_clock::now();
 
   if(DEBUG_TIMING) start3 = high_resolution_clock::now();
-  regularPolygonHandler(baseCoords, overlayCoords);
+  regularPolygonHandler(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID);
   if(DEBUG_TIMING) end3 = high_resolution_clock::now();// -------------------------------------------------------------------------------------------
 
   // PHASE: 3
@@ -294,19 +327,71 @@ void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
 }
 
 int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
-          coord_t *baseCoords, coord_t *overlayCoords, 
+          /*coord_t *baseCoords, coord_t *overlayCoords,  */                 
+          coord_t *bCoords, coord_t *oCoords,
           int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
-  printf("\n ghcuda start (from ghcuda.cpp)\n");
-  string inputShp1=string("GCMF data share");
-  string inputShp2=string("GCMF data share");
-  
-  for(int cid=0; cid<totalNumPairs; ++cid){
-    if(pIDList[cid]==22 || pIDList[cid]==41) continue; //skip list for error handling
+  // pIDList[1]={18};
+  // qIDList[1]={670};
+  for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
+    //skip list for error handling
+    if(
+      (qIDList[cid]==11771) ||
+      (qIDList[cid]==11754) ||
+      (qIDList[cid]==11770) ||
+      (qIDList[cid]==11770) ||
+      (qIDList[cid]==11780) ||
+      (qIDList[cid]==11707) ||
+      (qIDList[cid]==11704) ||
+      (qIDList[cid]==11827) ||
+      (qIDList[cid]==9609) ||
 
-    readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
-    GH_CUDA(baseCoords, overlayCoords);
-    free(baseCoords);
-    free(overlayCoords);
+      // (pIDList[cid]==177) || 
+      (pIDList[cid]==175) || 
+      (pIDList[cid]==174) || 
+      (pIDList[cid]==172) || 
+      (pIDList[cid]==171) || 
+      (pIDList[cid]==170) || 
+      (pIDList[cid]==166) || 
+      (pIDList[cid]==158) || 
+      (pIDList[cid]==145) || 
+      (pIDList[cid]==133) || 
+      (pIDList[cid]==132) || 
+      (pIDList[cid]==131) || 
+      (pIDList[cid]==130) || 
+      (pIDList[cid]==120) || 
+      (pIDList[cid]==118) || 
+      (pIDList[cid]==115 && qIDList[cid]==5416) || 
+      pIDList[cid]==112 || 
+      pIDList[cid]==110 || 
+      (pIDList[cid]==105) || 
+      pIDList[cid]==104 || 
+      pIDList[cid]==103 || 
+      pIDList[cid]==72 || 
+      pIDList[cid]==44 || 
+      pIDList[cid]==27 || 
+      pIDList[cid]==18 || 
+      pIDList[cid]==22 || 
+      pIDList[cid]==41) {
+        pPolygon.clear();
+        qPolygon.clear();
+        continue; 
+      }
+
+    // readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
+    loadPolygonDataFromLayer(pIDList[cid], qIDList[cid]);
+   
+    // printf("\n*** Pair  %d %d***\n", pPolygon[0].size, qPolygon[0].size);
+    if((pPolygon[0].size%2 != qPolygon[0].size%2) /*|| (pPolygon[0].size<100 || qPolygon[0].size<100)*/) {
+      pPolygon.clear();
+      qPolygon.clear();
+      continue;
+    }
+    printf("\n*** Pair Number: %d, Processed Number: %d***\n", cid, processedID++);
+
+    GH_CUDA(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, pIDList[cid], qIDList[cid]);
+    // GH_CUDA(baseCoords, overlayCoords);
+    // free(baseCoords);
+    // free(overlayCoords);
     pPolygon.clear();
     qPolygon.clear();
   }
