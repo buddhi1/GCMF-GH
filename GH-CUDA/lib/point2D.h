@@ -30,7 +30,7 @@ class point2D
   coord_t x,y;
 
   // default-constructor to generate the 2D point (0,0)
-  point2D() { x=y=0; }
+  point2D() { x=y=0.0; }
    // copy-constructor
   point2D(const point2D& b) { x=b.x; y=b.y; }
   // initialize 2D point with explicit coordinates

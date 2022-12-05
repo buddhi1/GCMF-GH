@@ -110,7 +110,7 @@ int getVertex(char* buff, char tkBuff[][50], coord_t* tk, int i,int n){
         token[k][j]='\0';
         tk[k]=atof(token[k]);
         strcpy(tkBuff[k], token[k]);
-        //printf("\nfBuff=%.13f \t token=%s\n", tk[k], token[k]);
+        // if(n==2 && k<5) printf("\nfBuff=%.13f \t token=%s\n", tk[k], token[k]);
     }
     if(i>=strlen(buff)){i=-2;}
     return(++i);
@@ -294,6 +294,7 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
     point2D v;
     polygon P;
 
+    int ccount=0;
     while(fgets(buff,MAX_BUFF,fid1)!=NULL && pCounter<maxPoly){        
         char cX1[20], cY1[20], cX2[20], cY2[20]; 
         i=0;
@@ -336,17 +337,25 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
 //printf("\n%d:\t%ld  %s\t%ld  %s\t%ld  %s\t%ld  %s", pCounter, seqMBR[pCounter*4], cX1, seqMBR[pCounter*4+1], cY1, seqMBR[pCounter*4+2], cX2, seqMBR[pCounter*4+3], cY2);
 //printf("\n%s %s %s %s", cX1, cY1, cX2, cY2);
         fNum-=2;
+
+        ccount++;
+        if(ccount==22) printf("\nSEQ_Overlay [%d]: ", ccount);
+
         for(int k=0;k<fNum;k++){
             *(baseCoords+2*(*bVNumSum+k))=polyBuff[k+2][0];
             *(baseCoords+2*(*bVNumSum+k)+1)=polyBuff[k+2][1];
-            if(k!=0)edgeSum+=GetEuclideanDist(*(baseCoords+2*(*bVNumSum+k-1)), *(baseCoords+2*(*bVNumSum+k-1)+1), *(baseCoords+2*(*bVNumSum+k)), *(baseCoords+2*(*bVNumSum+k)+1));
-
+            
             // ---------------------- FOR GH CPU data structure: start ----------------------
-            v=point2D(polyBuff[k+2][0], polyBuff[k+2][1]);
-			P.newVertex(v, true);
+            if(k<fNum-1){
+                v=point2D(polyBuff[k+2][0], polyBuff[k+2][1]);
+                P.newVertex(v, true);
+                if(ccount==22 && k<4 /*(k==0 || k==fNum-1) */) printf("(%.13f, %.13f) ", polyBuff[k+2][0], polyBuff[k+2][1]);
+            }
             // ---------------------- FOR GH CPU data structure: end ----------------------
-        } 
 
+            if(k!=0)edgeSum+=GetEuclideanDist(*(baseCoords+2*(*bVNumSum+k-1)), *(baseCoords+2*(*bVNumSum+k-1)+1), *(baseCoords+2*(*bVNumSum+k)), *(baseCoords+2*(*bVNumSum+k)+1));            
+        } 
+        
         *bVNumSum+=fNum;
         // ---------------------- FOR GH CPU data structure: start ----------------------
         polygons.push_back(P);

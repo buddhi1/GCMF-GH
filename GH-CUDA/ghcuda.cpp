@@ -11,7 +11,7 @@ using namespace std::chrono;
 
 
 int argn;
-string outputFile=string("results/Fig-def-R.poly");
+string outputFile=string("results/Results-def-R.poly");
 
 // read from shape files
 void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, string inputShp1, int pID, string inputShp2, int qID){
@@ -61,7 +61,7 @@ void readInputFromShapeFiles(coord_t **baseCoords, coord_t **overlayCoords, stri
 }
 
 // load polygon data from polygons vector to the single polygon linked list
-void loadPolygonDataFromLayer(int pID, int qID){
+int loadPolygonDataFromLayer(int pID, int qID){
   int sizeP=pPolygons[pID].size, sizeQ=qPolygons[qID].size;
   if(sizeP<sizeQ){
     pPolygon.push_back(qPolygons[qID]);
@@ -70,28 +70,30 @@ void loadPolygonDataFromLayer(int pID, int qID){
     sizeQ=pPolygons[pID].size;
 
     if(DEBUG_INFO_PRINT){
-      cout<<"\nGCMF inout data share: pID: "<<pID<<endl;;
-      cout<<"GCMF inout data share: qID: "<<qID<<endl;
+      cout<<"\nGCMF input data share: pID: "<<pID<<endl;;
+      cout<<"GCMF input data share: qID: "<<qID<<endl;
       cout << "pPolygon and qPolygon swapped since qPolygon> pPolygon\nNew pPolygon Polygon size " << sizeP;
       cout << " New qPolygon Polygon size " << sizeQ << endl;
     }
+    return 1;
   } else {
     pPolygon.push_back(pPolygons[pID]);
     qPolygon.push_back(qPolygons[qID]);
 
     if(DEBUG_INFO_PRINT){
-      cout<<"\n*GCMF inout data share: pID: "<<pID<<endl;;
-      cout<<"GCMF inout data share: qID: "<<qID<<endl;
+      cout<<"\n*GCMF input data share: pID: "<<pID<<endl;;
+      cout<<"GCMF input data share: qID: "<<qID<<endl;
       cout << "pPolygon Polygon size " << sizeP;
       cout << " qPolygon Polygon size " << sizeQ << endl;
     }
+    return 0;
   }
 }
 
 // get CMBR for pPolygon and qPolygon
-void getCMBR(double *cmbr){
-  vector<double> PPMBR;
-  vector<double> QQMBR;
+void getCMBR(coord_t *cmbr){
+  vector<coord_t> PPMBR;
+  vector<coord_t> QQMBR;
   // double *cmbr; //minx, miny, maxx, maxy
   double minX, minY, maxX, maxY;
 
@@ -99,7 +101,7 @@ void getCMBR(double *cmbr){
   QQMBR=getMBR(qPolygon[0]);
 
   if(DEBUG_INFO_PRINT){
-    cout<<"MBR_P ["<<PPMBR[0]<<", "<<PPMBR[1]<<", "<<PPMBR[2]<<", "<<PPMBR[3]<<endl;
+    cout<<setprecision(13)<<"MBR_P ["<<PPMBR[0]<<", "<<PPMBR[1]<<", "<<PPMBR[2]<<", "<<PPMBR[3]<<endl;
     cout<<"MBR_Q ["<<QQMBR[0]<<", "<<QQMBR[1]<<", "<<QQMBR[2]<<", "<<QQMBR[3]<<endl;
   }
 
@@ -178,30 +180,53 @@ void readPolygons(int argc, char* argv[], coord_t **baseCoords, coord_t **overla
 }
 
 // handles polygons without holes
-void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID){
+int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID, int swapped){
 // void regularPolygonHandler(coord_t *baseCoord, coord_t *overlayCoords){
   // -------------------------------------------------------------------------------------------
   // PHASE:2 calculate intersections using GPU acceleration
   // -------------------------------------------------------------------------------------------
-  double *intersectionsP, *intersectionsQ;
+  coord_t *intersectionsP, *intersectionsQ;
   int countNonDegenIntP, countNonDegenIntQ, *initLabelsP, *initLabelsQ, *neighborP, *neighborQ;
-  int *alphaValuesP, *alphaValuesQ;
+  int *alphaValuesP, *alphaValuesQ, invalid=0;
   vertex *tmpVertex, *current;
-  double *cmbr;
-  cmbr=(double *)malloc(4*sizeof(double));
+  coord_t *cmbr;
+  cmbr=(coord_t *)malloc(4*sizeof(coord_t));
   getCMBR(cmbr);
 
-  calculateIntersections(
-      bCoord, 
-      oCoords, 
-      pPolygon[0].size, qPolygon[0].size, cmbr, 
-      pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID,
-      &countNonDegenIntP, &countNonDegenIntQ, 
-      &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
-      &initLabelsP, &initLabelsQ, 
-      &neighborP, &neighborQ);
+  if(swapped){
+    calculateIntersections(
+        oCoords,
+        bCoord, 
+        pPolygon[0].size, qPolygon[0].size, cmbr, 
+        pOVNum, pOVPSNum, pBVNum, pBVPSNum, oPID, bPID,
+        &countNonDegenIntQ, &countNonDegenIntP, 
+        &intersectionsQ,  &intersectionsP, &alphaValuesQ, &alphaValuesP,
+        &initLabelsQ, &initLabelsP, 
+        &neighborQ, &neighborP, &invalid);
+  }else{
+    calculateIntersections(
+        bCoord, 
+        oCoords, 
+        pPolygon[0].size, qPolygon[0].size, cmbr, 
+        pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID,
+        &countNonDegenIntP, &countNonDegenIntQ, 
+        &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
+        &initLabelsP, &initLabelsQ, 
+        &neighborP, &neighborQ, &invalid);
+  }
   // -------------------------------------------------------------------------------------------
-// return 0;
+  cout<<"invalid "<<invalid<<endl;
+  if(invalid) return invalid;
+
+  // printf("\nneighbor array %d\n", countNonDegenIntP);
+  // for(int cc=0; cc<countNonDegenIntP; ++cc){
+  //   printf("%d-%d ", cc, neighborP[cc]);
+  // }
+  printf("\nneighbor array %d\n", countNonDegenIntQ);
+  for(int cc=0; cc<countNonDegenIntQ; ++cc){
+    printf("%d-%d ", cc, neighborQ[cc]);
+  }
+
   // -------------------------------------------------------------------------------------------
   // Polygon P: (pPolygon)insert intersection vertices and change alpha value in the degenerate cases
   // -------------------------------------------------------------------------------------------
@@ -209,12 +234,13 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
   int intersectionPArrayMax=countNonDegenIntP*2;
   qPolygonVertexPointers=new vertex*[countNonDegenIntP];
   vertex* V=pPolygon[0].root;
-  // printf("\n Polygon P copied \n");
-  // printf("\n root V (%f, %f)\n", V->p.x, V->p.y);
-
+  if(DEBUG_INFO_PRINT) printf(" Polygon P copying \n");
+  // printf("\n root V (%f, %f)\n", V->p.x, V->p.y); 
+  
   for(int ii=0; ii<=pPolygon[0].size; ii++){
     current=V;
-    while(*(intersectionsP+(i%intersectionPArrayMax))!=V->p.x || *(intersectionsP+((i+1)%intersectionPArrayMax))!=V->p.y){
+    while((fabs(*(intersectionsP+(i%intersectionPArrayMax))-V->p.x) > EPSILON) || (fabs(*(intersectionsP+((i+1)%intersectionPArrayMax))-V->p.y) > EPSILON)){
+    // while(*(intersectionsP+(i%intersectionPArrayMax))!=V->p.x || *(intersectionsP+((i+1)%intersectionPArrayMax))!=V->p.y){
       tmpVertex=new vertex(*(intersectionsP+i), *(intersectionsP+i+1));
       tmpVertex->label=(IntersectionLabel)(*(initLabelsP+(i/2)));
       tmpVertex->source=false;
@@ -225,6 +251,7 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
       current->prev=tmpVertex;
       qPolygonVertexPointers[pi++]=tmpVertex;
       i+=2;
+      // cout<<"from p copy pi="<<pi-1<<endl;
     }
     if(ii<pPolygon[0].size){ 
       qPolygonVertexPointers[pi]=V;
@@ -244,9 +271,14 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
   i=0;
   V=qPolygon[0].root;
   int intersectionQArrayMax=countNonDegenIntQ*2;
+  if(DEBUG_INFO_PRINT) printf(" Polygon Q copying (%d) \n", qPolygon[0].size);
+  
   for(int ii=0; ii<=qPolygon[0].size; ++ii){
     current=V;
-    while(*(intersectionsQ+(i%intersectionQArrayMax))!=V->p.x || *(intersectionsQ+((i+1)%intersectionQArrayMax))!=V->p.y){
+    // cout<<"P* Copying "<<ii<<endl;
+    while((fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) > EPSILON) || (fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) > EPSILON)){
+    // while(*(intersectionsQ+(i%intersectionQArrayMax))!=V->p.x || *(intersectionsQ+((i+1)%intersectionQArrayMax))!=V->p.y){
+      // cout<<"q$$$$** Copying "<<i<<endl;
       tmpVertex=new vertex(*(intersectionsQ+i), *(intersectionsQ+i+1));
       tmpVertex->label=(IntersectionLabel)(*(initLabelsQ+(i/2)));
       tmpVertex->source=false;
@@ -255,10 +287,16 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
       current->prev->next=tmpVertex;
       tmpVertex->prev=current->prev;
       current->prev=tmpVertex;
+      // cout<<"1######** Copying "<<(*(neighborQ+(i/2)))-1<<endl;
+      // cout<< fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<"q++++ Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
       tmpVertex->neighbour=qPolygonVertexPointers[(*(neighborQ+(i/2)))-1];
+      // cout<< fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<"q$$$$===** Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
       qPolygonVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=tmpVertex;
+      // cout<<"q$$$$-----** Copying "<<i<<endl;
       i+=2;
+      // cout<<"P** Copying "<<i<<endl;
     }
+    // cout<<"P*++* Copying "<<i<<endl;
     if(ii<qPolygon[0].size){
       V->label=(IntersectionLabel)(*(initLabelsQ+(i/2)));
       if(*(alphaValuesQ+(i/2))!=-100){ 
@@ -268,9 +306,10 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
       }
     }
     i+=2;
+    // cout<<"P*-----* Copying "<<i<<endl;
     V=current->next;
   }
-   if(DEBUG_INFO_PRINT) printf("Copying completed");
+  if(DEBUG_INFO_PRINT) printf("Copying completed");
   // -------------------------------------------------------------------------------------------
   free(intersectionsP);
   free(intersectionsQ);
@@ -283,18 +322,22 @@ void regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long 
   // free(tmpVertex);
   // free(current);
   free(cmbr);
+  free(qPolygonVertexPointers);
+
+  return invalid;
 }
 
-void GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID){
+int GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum, int bPID, int oPID, int swapped){
 // void GH_CUDA(coord_t *baseCoords, coord_t *overlayCoords){
   high_resolution_clock::time_point start, end, start1, end1, start2, end2, start3, end3;
 
   if(DEBUG_TIMING) start = high_resolution_clock::now();
 
   if(DEBUG_TIMING) start3 = high_resolution_clock::now();
-  regularPolygonHandler(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID);
+  int invalid=regularPolygonHandler(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, bPID, oPID, swapped);
   if(DEBUG_TIMING) end3 = high_resolution_clock::now();// -------------------------------------------------------------------------------------------
-
+  if(invalid) return invalid;
+  
   // PHASE: 3
   if(DEBUG_TIMING) start1 = high_resolution_clock::now();
   labelIntersections();
@@ -324,71 +367,75 @@ void GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, in
     cout<<"Sequential labeling: " << fixed<< duration1.count() << setprecision(10) << endl;
     cout<<"Sequential labeling: " << fixed<< duration2.count() << setprecision(10) << endl;
   }
+  return invalid;
 }
 
 int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
           /*coord_t *baseCoords, coord_t *overlayCoords,  */                 
           coord_t *bCoords, coord_t *oCoords,
           int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
-  // pIDList[1]={18};
-  // qIDList[1]={670};
-  for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
+  pIDList[0]={18};
+  qIDList[0]={670};
+  int swapped=0;
+  for(int cid=0, processedID=1; cid<1; ++cid){
+  // for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
     //skip list for error handling
-    if(
-      (qIDList[cid]==11771) ||
-      (qIDList[cid]==11754) ||
-      (qIDList[cid]==11770) ||
-      (qIDList[cid]==11770) ||
-      (qIDList[cid]==11780) ||
-      (qIDList[cid]==11707) ||
-      (qIDList[cid]==11704) ||
-      (qIDList[cid]==11827) ||
-      (qIDList[cid]==9609) ||
+    // if(
+    //   (qIDList[cid]==11771) ||
+    //   (qIDList[cid]==11754) ||
+    //   (qIDList[cid]==11770) ||
+    //   (qIDList[cid]==11770) ||
+    //   (qIDList[cid]==11780) ||
+    //   (qIDList[cid]==11707) ||
+    //   (qIDList[cid]==11704) ||
+    //   (qIDList[cid]==11827) ||
+    //   (qIDList[cid]==9609) ||
 
-      // (pIDList[cid]==177) || 
-      (pIDList[cid]==175) || 
-      (pIDList[cid]==174) || 
-      (pIDList[cid]==172) || 
-      (pIDList[cid]==171) || 
-      (pIDList[cid]==170) || 
-      (pIDList[cid]==166) || 
-      (pIDList[cid]==158) || 
-      (pIDList[cid]==145) || 
-      (pIDList[cid]==133) || 
-      (pIDList[cid]==132) || 
-      (pIDList[cid]==131) || 
-      (pIDList[cid]==130) || 
-      (pIDList[cid]==120) || 
-      (pIDList[cid]==118) || 
-      (pIDList[cid]==115 && qIDList[cid]==5416) || 
-      pIDList[cid]==112 || 
-      pIDList[cid]==110 || 
-      (pIDList[cid]==105) || 
-      pIDList[cid]==104 || 
-      pIDList[cid]==103 || 
-      pIDList[cid]==72 || 
-      pIDList[cid]==44 || 
-      pIDList[cid]==27 || 
-      pIDList[cid]==18 || 
-      pIDList[cid]==22 || 
-      pIDList[cid]==41) {
-        pPolygon.clear();
-        qPolygon.clear();
-        continue; 
-      }
+    //   // (pIDList[cid]==177) || 
+    //   (pIDList[cid]==175) || 
+    //   (pIDList[cid]==174) || 
+    //   (pIDList[cid]==172) || 
+    //   (pIDList[cid]==171) || 
+    //   (pIDList[cid]==170) || 
+    //   (pIDList[cid]==166) || 
+    //   (pIDList[cid]==158) || 
+    //   (pIDList[cid]==145) || 
+    //   (pIDList[cid]==133) || 
+    //   (pIDList[cid]==132) || 
+    //   (pIDList[cid]==131) || 
+    //   (pIDList[cid]==130) || 
+    //   (pIDList[cid]==120) || 
+    //   (pIDList[cid]==118) || 
+    //   (pIDList[cid]==115 && qIDList[cid]==5416) || 
+    //   pIDList[cid]==112 || 
+    //   pIDList[cid]==110 || 
+    //   (pIDList[cid]==105) || 
+    //   pIDList[cid]==104 || 
+    //   pIDList[cid]==103 || 
+    //   pIDList[cid]==72 || 
+    //   pIDList[cid]==44 || 
+    //   pIDList[cid]==27 /* || 
+      // pIDList[cid]==18 )
+    //   pIDList[cid]==22 || 
+    //   pIDList[cid]==41) 
+      // {
+      //   continue; 
+      // }
 
     // readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
-    loadPolygonDataFromLayer(pIDList[cid], qIDList[cid]);
+    swapped=loadPolygonDataFromLayer(pIDList[cid], qIDList[cid]);
    
     // printf("\n*** Pair  %d %d***\n", pPolygon[0].size, qPolygon[0].size);
-    if((pPolygon[0].size%2 != qPolygon[0].size%2) /*|| (pPolygon[0].size<100 || qPolygon[0].size<100)*/) {
-      pPolygon.clear();
-      qPolygon.clear();
-      continue;
-    }
-    printf("\n*** Pair Number: %d, Processed Number: %d***\n", cid, processedID++);
+    // if((pPolygon[0].size%2 != qPolygon[0].size%2) /*|| (pPolygon[0].size<100 || qPolygon[0].size<100)*/) {
+    //   pPolygon.clear();
+    //   qPolygon.clear();
+    //   continue;
+    // }
+    printf("\n\n*** Pair ID: %d, Processing Number: %d***\n", cid, processedID++);
+    printf(" [Pair invalid=%d]\n\n", 
+            GH_CUDA(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, pIDList[cid], qIDList[cid], swapped));
 
-    GH_CUDA(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, pIDList[cid], qIDList[cid]);
+    // GH_CUDA(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, pIDList[cid], qIDList[cid]);
     // GH_CUDA(baseCoords, overlayCoords);
     // free(baseCoords);
     // free(overlayCoords);

@@ -7,7 +7,7 @@
 
 #include "lib/constants.h"
 
-typedef float coord_t;
+typedef double coord_t;
 
 typedef struct{
   double x, y;
@@ -381,13 +381,15 @@ Called from Host
 */
 __global__ void gpuCMBRFilter(
                 coord_t *coords, long *dVPSNum, int pID,
-                double cmbrMinX, double cmbrMinY, double cmbrMaxX, double cmbrMaxY,
+                coord_t cmbrMinX, coord_t cmbrMinY, coord_t cmbrMaxX, coord_t cmbrMaxY,
                 int size, int *boolPs, int *ps1, int *ps2){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  if(id>=size) return;
+  if(id>size) return;
   
-  int indexStart=2*(dVPSNum[pID]-size);
-  int id2=2*id+indexStart;
+  long indexStart=2*(dVPSNum[pID]-size-1);
+  long id2=2*id+indexStart;
+  // if(id==0) printf("\nsize from PSUM %ld %ld\n", (dVPSNum[pID]-size-1), indexStart);
+  // if(id==0) printf("\nsize from PSUM 11 %ld %d\n", (dVPSNum[0]), size);
   
   point P1, P2;
   P1.x=coords[id2];
@@ -464,10 +466,10 @@ __global__ void gpuCountIntersections(
                   int sizeP, int sizeQ,
                   int *psP1, int *psP2, int *boolPIndex){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
-  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
+  long bStartIndex=2*(dbVPSNum[bpID]-sizeP-1);
+  long oStartIndex=2*(doVPSNum[opID]-sizeQ-1);
 
-  int id2=2*id+bStartIndex;
+  long id2=2*id+bStartIndex;
   int idx=threadIdx.x;  
   __shared__ double poly2X_shared[MAX_POLY2_SIZE+1], poly2Y_shared[MAX_POLY2_SIZE+1] /*+1 for halo next*/;
   double alpha;
@@ -528,6 +530,7 @@ __global__ void gpuCountIntersections(
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
           if(i!=0){
+            printf("\n count id=%d qid=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)  %ld >> i=%d\n", id, qid, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, (id2-bStartIndex)/2, i);   
             count1++;
             if(i==1 || i==3 || i==5 || i==7)
               count2++;
@@ -548,12 +551,12 @@ __global__ void gpuNeighborMap(
                   coord_t *oCoords, long *doVPSNum, int opID,
                   int sizeP, int sizeQ, 
                   int *psP1, int *psQ1, int *psQ2,
-                  int *neighborMapQ){
+                  long *neighborMapQ){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
-  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
-  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
+  long bStartIndex=2*(dbVPSNum[bpID]-sizeP-1);
+  long oStartIndex=2*(doVPSNum[opID]-sizeQ-1);
 
-  int id2=2*id+oStartIndex;
+  long id2=2*id+oStartIndex;
   double alpha;
   double beta;
   point I;
@@ -572,32 +575,35 @@ __global__ void gpuNeighborMap(
 
     P1.x = oCoords[id2];
     P1.y = oCoords[id2+1];
-    if(id>=sizeQ-1){
+    if(id==sizeQ-1){
       P2.x = oCoords[oStartIndex];
-      P2.y = oCoords[oStartIndex];
+      P2.y = oCoords[oStartIndex+1];
     }else{
       P2.x = oCoords[id2+2];
       P2.y = oCoords[id2+3];
     }
 
-    for(int qid=0, qid2=bStartIndex; qid<sizeP; qid++, qid2+=2){        
+    int qid;
+    long qid2;
+    for(qid=0, qid2=bStartIndex; qid<sizeP; qid++, qid2+=2){        
       // prefix sum filter: check if the current edge has any intersection count      
       if(psP1[qid+1]!=psP1[qid])
       {
         Q1.x = bCoords[qid2];
         Q1.y = bCoords[qid2+1];
-        if(qid>=sizeP-1){
-          P2.x = bCoords[bStartIndex];
-          P2.y = bCoords[bStartIndex+1];
+        if(qid==sizeP-1){
+          Q2.x = bCoords[bStartIndex];
+          Q2.y = bCoords[bStartIndex+1];
         }else{
-          P2.x = bCoords[qid2+2];
-          P2.y = bCoords[qid2+3];
+          Q2.x = bCoords[qid2+2];
+          Q2.y = bCoords[qid2+3];
         }
 
         if(gpuLSMF(P1, P2, Q1, Q2))
         {
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
+          printf("\nNeighborMapQ id=%d id2=%ld  qid=%d qid2=%ld \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)& ps-index=%d >> %d\n",id, id2, qid, qid2, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, psQ2[id]+count2, i);   
           if(i!=0){
             count1++;
             if((id<sizeP && (i==1 || i==3 || i==5 || i==7)) || (id>=sizeP && (i==1 || i==3 || i==5 || i==7))){
@@ -607,7 +613,8 @@ __global__ void gpuNeighborMap(
             else if((id<sizeP && (i==2 || i==4 || i==6 || i==8)) || (id>=sizeP && (i==2 || i==4 || i==6 || i==8)))
               count2=0;
 
-            neighborMapQ[psQ2[id]+count2]=qid;      
+            // neighborMapQ[psQ2[id]+count2]=qid2/2;      
+            neighborMapQ[psQ2[id]+count2]=qid;   
           }
         }
       }
@@ -891,10 +898,10 @@ __global__ void gpuCalculateIntersections(
                   coord_t *oCoords, long *doVPSNum, int opID,
                   int sizeP, int sizeQ, 
                   int *psP1, int *psP2, int *psQ1, int *psQ2, 
-                  double *intersectionsP, double *intersectionsQ, double *intersectionsP2, double *intersectionsQ2,
+                  coord_t *intersectionsP, coord_t *intersectionsQ, coord_t *intersectionsP2, coord_t *intersectionsQ2,
                   int *alphaValuesP, int *alphaValuesQ, int *tmpBucketP, int *alphaSortedIndiciesP,
                   int *neighborP, int *neighborQ, int *neighborP2, int *neighborQ2,
-                  int *neighborMapQ /*, int *boolPIndex, int *boolQIndex*/){
+                  long *neighborMapQ /*, int *boolPIndex, int *boolQIndex*/){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
   double alpha;
   double beta;
@@ -906,10 +913,12 @@ __global__ void gpuCalculateIntersections(
   point P1, P2, Q1, Q2;
   int pid=id;
 
-  int bStartIndex=2*(dbVPSNum[bpID]-sizeP);
-  int oStartIndex=2*(doVPSNum[opID]-sizeQ);
-  int bid2=2*pid+bStartIndex;
-  int oid2=2*pid+oStartIndex;
+  long bStartIndex=2*(dbVPSNum[bpID]-sizeP-1);
+  long oStartIndex=2*(doVPSNum[opID]-sizeQ-1);
+  long bid2=2*pid+bStartIndex;
+  long oid2=2*pid+oStartIndex;
+
+  // if(id==0) printf("\npsumB = %ld psumO = %ld %ld %ld\n", dbVPSNum[bpID], doVPSNum[opID], bStartIndex, oStartIndex);
 
   intersectionsP[psP2[pid]*2]=bCoords[bid2];       //consider edge for the intersection array
   intersectionsP[psP2[pid]*2+1]=bCoords[bid2+1];
@@ -932,7 +941,7 @@ __global__ void gpuCalculateIntersections(
     P1.x = bCoords[bid2];
     P1.y = bCoords[bid2+1];
 
-    if(id>=sizeP-1){
+    if(id==sizeP-1){
       P2.x = bCoords[bStartIndex];
       P2.y = bCoords[bStartIndex+1];
     }else{
@@ -941,8 +950,9 @@ __global__ void gpuCalculateIntersections(
     }
     // P2.x = bCoords[(bid2+2)%(2*sizeP)];
     // P2.y = bCoords[(bid2+3)%(2*sizeP)];
-
-    for(int qid=0, qid2=oStartIndex; qid<sizeQ; qid++, qid2+=2){
+    int qid;
+    long qid2;
+    for(qid=0, qid2=oStartIndex; qid<sizeQ; qid++, qid2+=2){
       // prefix sum filter: check if the current edge has any intersection count      
       if(psQ1[qid+1]!=psQ1[qid])
       // CMBR filter followed by prefix sum filter
@@ -951,12 +961,12 @@ __global__ void gpuCalculateIntersections(
         Q1.x = oCoords[qid2];
         Q1.y = oCoords[qid2+1];
         
-        if(qid>=sizeQ-1){
-          P2.x = oCoords[oStartIndex];
-          P2.y = oCoords[oStartIndex+1];
+        if(qid==sizeQ-1){
+          Q2.x = oCoords[oStartIndex];
+          Q2.y = oCoords[oStartIndex+1];
         }else{
-          P2.x = oCoords[bid2+2];
-          P2.y = oCoords[bid2+3];
+          Q2.x = oCoords[bid2+2];
+          Q2.y = oCoords[bid2+3];
         }
         // Q2.x = oCoords[(qid2+2)%(2*sizeQ)];
         // Q2.y = oCoords[(qid2+3)%(2*sizeQ)];
@@ -1006,6 +1016,9 @@ __global__ void gpuCalculateIntersections(
                 }
               }
             }
+            // printf("\niNNNNN\n");
+            printf("\nneighborP %d neighborQ %d\n", neighborP[psP2[pid]+count2], neighborQ[neighborQId]);
+
             switch(i) {
               // case X_INTERSECTION:
               // I and I
@@ -1115,7 +1128,7 @@ Called from Host
 __global__ void gpuSortPolyQ(
                   int sizeQ, 
                   int *psQ2, 
-                  double *intersectionsQ, double *intersectionsQ2,
+                  coord_t *intersectionsQ, coord_t *intersectionsQ2,
                   int *alphaValuesQ, int *tmpBucketQ,  int *alphaSortedIndiciesQ,
                   int *neighborP, int *neighborQ, int *neighborQ2){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
@@ -1153,7 +1166,7 @@ Called from Host
 */
 __global__ void gpuCalculateInitLabel(
                 int sizeP, int *psP2,
-                double *intersectionsP, double *intersectionsQ, int *alphaValuesP, 
+                coord_t *intersectionsP, coord_t *intersectionsQ, int *alphaValuesP, 
                 int *neighborP,
                 int sizeNP, int sizeNQ, int *initLabelsP, int *initLabelsQ){
   int id=(blockIdx.y*gridDim.x+blockIdx.x)*blockDim.x+threadIdx.x;
@@ -1207,6 +1220,62 @@ __global__ void gpuCalculateInitLabel(
 
 /*
 -----------------------------------------------------------------
+Clean GPU data structures 
+-------------------------------------------------------------------
+*/
+/*
+void cleanUp(int *dev_psP1, int *dev_psP2, int *dev_psQ1, int *dev_psQ2, 
+            int *dev_boolPsPX, int *dev_boolPsQX, int *dev_boolPX, int *dev_boolQX,
+            int *dev_neighborMapQ,
+            coord_t *dev_intersectionsP, coord_t *dev_intersectionsQ, coord_t *dev_intersectionsP2, coord_t *dev_intersectionsQ2){
+  // cleanup
+  cudaFree(dev_boolPsPX);
+  cudaFree(dev_boolPsQX);
+  cudaFree(dev_boolPX);
+  cudaFree(dev_boolQX);
+
+  cudaFree(dev_neighborMapQ);
+  cudaFree(dev_psP1);
+  cudaFree(dev_psQ1);
+  cudaFree(dev_psP2);
+  cudaFree(dev_psQ2);
+
+
+  cudaFree(dev_intersectionsP);
+  cudaFree(dev_intersectionsQ);
+  cudaFree(dev_intersectionsP2);
+  cudaFree(dev_intersectionsQ2);
+
+  cudaFree(dev_alphaValuesP);
+  cudaFree(dev_alphaValuesQ);
+  cudaFree(dev_tmpBucketP);
+  cudaFree(dev_tmpBucketQ);
+  cudaFree(dev_alphaSortedIndiciesP);
+  cudaFree(dev_alphaSortedIndiciesQ);
+
+  cudaFree(dev_neighborP);
+  cudaFree(dev_neighborQ);
+  cudaFree(dev_neighborP2);
+  cudaFree(dev_neighborQ2);
+
+  cudaFree(dev_initLabelsP);
+  cudaFree(dev_initLabelsQ);
+
+  // free(psP1);
+  // free(psP2);
+  // free(psQ1);
+  // free(psQ2);
+  // free(boolPsPX);
+  // free(boolPsQX);
+  free(neighborMapQ);
+  free(alphaSortedIndiciesP);
+  free(alphaSortedIndiciesQ);
+
+  // cudaDeviceReset(); //added to clean all resourses
+}*/
+
+/*
+-----------------------------------------------------------------
 Function to count how many intersection points and prefix sums
 Returns 
   *count of non degenerate vertices x2 (P and Q)
@@ -1225,12 +1294,12 @@ Called from Host
 void calculateIntersections(
                   coord_t *bCoords, 
                   coord_t *oCoords,
-                  int sizeP, int sizeQ, double *cmbr,
+                  int sizeP, int sizeQ, coord_t *cmbr,
                   int *dbVNum, long *dbVPSNum, int *doVNum, long *doVPSNum, int bPID, int oPID, 
                   int *countNonDegenIntP, int *countNonDegenIntQ, 
-                  double **intersectionsP, double **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,
+                  coord_t **intersectionsP, coord_t **intersectionsQ, int **alphaValuesP, int **alphaValuesQ,
                   int **initLabelsP, int **initLabelsQ,
-                  int **neighborP, int **neighborQ){
+                  int **neighborP, int **neighborQ, int *invalid){
     // coord_t *bCoords, *oCoords;
     int *dev_psP1, *dev_psP2, *dev_psQ1, *dev_psQ2, *dev_boolPsPX, *dev_boolPsQX, *dev_boolPX, *dev_boolQX;
     int psP1[sizeP+1], psP2[sizeP+1], psQ1[sizeQ+1], psQ2[sizeQ+1];
@@ -1365,9 +1434,15 @@ void calculateIntersections(
 
     cudaDeviceSynchronize();
 
+    // printf("\nprefixsum array: ");
+    // for(int cc=0; cc<=sizeP; ++cc) printf("%d-%d ", cc, psP2[cc]);
+    // printf("\nprefixsum array: ");
+    // for(int cc=0; cc<=sizeQ; ++cc) printf("%d-%d ", cc, psQ2[cc]);
+    // printf("\n");
+
     //Phase2: NEW- Fill neighborMap
-    int *dev_neighborMapQ;
-    int *neighborMapQ;
+    long *dev_neighborMapQ;
+    long *neighborMapQ;
     *countNonDegenIntP=psP2[sizeP];
     *countNonDegenIntQ=psQ2[sizeQ];
 
@@ -1376,11 +1451,31 @@ void calculateIntersections(
       printf("Intersection count P %d *****--- Q %d\n", psP1[sizeP], psQ1[sizeQ]);
     }
 
+    // when intersection count are different from each polygon view, make the pair invalid. 
+    // *** Need debuging this error
+    *invalid=0;
+    if(psP1[sizeP]!=psQ1[sizeQ]) {
+      *invalid=1;
+      // printf(".cu invalid %d\n", *invalid);
+      // cleanup
+      cudaFree(dev_boolPsPX);
+      cudaFree(dev_boolPsQX);
+      cudaFree(dev_boolPX);
+      cudaFree(dev_boolQX);
+
+      cudaFree(dev_neighborMapQ);
+      cudaFree(dev_psP1);
+      cudaFree(dev_psQ1);
+      cudaFree(dev_psP2);
+      cudaFree(dev_psQ2);
+      return;
+    }
+
     dim3 dimGrid(xBlocksPerGrid, yBlockPerGrid, 1);
 
-    neighborMapQ=(int *)malloc(*countNonDegenIntQ*sizeof(int));
+    neighborMapQ=(long *)malloc(*countNonDegenIntQ*sizeof(long));
 
-    cudaMalloc((void **) &dev_neighborMapQ, *countNonDegenIntQ*sizeof(int));
+    cudaMalloc((void **) &dev_neighborMapQ, *countNonDegenIntQ*sizeof(long));
 
     if(DEBUG_TIMING){
         cudaEventCreate(&kernelStart3);
@@ -1403,17 +1498,19 @@ void calculateIntersections(
   
   if(DEBUG_TIMING) cudaEventSynchronize(kernelStop3);
 
+  if(DEBUG_INFO_PRINT) printf("NeighborMap done. Phase 3 starting...\n");
+  
   // Phase 3: Calcualte intersections and save them in the arrays. Make neighbor connections
   int countIntersections=psP1[sizeP];
 
   int *alphaSortedIndiciesP, *alphaSortedIndiciesQ;
-  double *dev_intersectionsP, *dev_intersectionsQ, *dev_intersectionsP2, *dev_intersectionsQ2;
+  coord_t *dev_intersectionsP, *dev_intersectionsQ, *dev_intersectionsP2, *dev_intersectionsQ2;
   int *dev_neighborP, *dev_neighborQ, *dev_neighborP2, *dev_neighborQ2;
   int *dev_initLabelsP, *dev_initLabelsQ;
   int *dev_alphaValuesP, *dev_alphaValuesQ, *dev_tmpBucketP, *dev_tmpBucketQ, *dev_alphaSortedIndiciesP, *dev_alphaSortedIndiciesQ;
 
-  *intersectionsP=(double *)malloc(*countNonDegenIntP*2*sizeof(double));
-  *intersectionsQ=(double *)malloc(*countNonDegenIntQ*2*sizeof(double));
+  *intersectionsP=(coord_t *)malloc(*countNonDegenIntP*2*sizeof(coord_t));
+  *intersectionsQ=(coord_t *)malloc(*countNonDegenIntQ*2*sizeof(coord_t));
   *alphaValuesP=(int *)malloc(*countNonDegenIntP*sizeof(int));
   *alphaValuesQ=(int *)malloc(*countNonDegenIntQ*sizeof(int));
   alphaSortedIndiciesP=(int *)malloc(*countNonDegenIntP*sizeof(int));
@@ -1431,10 +1528,10 @@ void calculateIntersections(
   cudaDeviceSynchronize();
 
   // Allocate memory in device 
-  cudaMalloc((void **) &dev_intersectionsP, *countNonDegenIntP*2*sizeof(double));
-  cudaMalloc((void **) &dev_intersectionsP2, *countNonDegenIntP*2*sizeof(double));
-  cudaMalloc((void **) &dev_intersectionsQ, *countNonDegenIntQ*2*sizeof(double));
-  cudaMalloc((void **) &dev_intersectionsQ2, *countNonDegenIntQ*2*sizeof(double));
+  cudaMalloc((void **) &dev_intersectionsP, *countNonDegenIntP*2*sizeof(coord_t));
+  cudaMalloc((void **) &dev_intersectionsP2, *countNonDegenIntP*2*sizeof(coord_t));
+  cudaMalloc((void **) &dev_intersectionsQ, *countNonDegenIntQ*2*sizeof(coord_t));
+  cudaMalloc((void **) &dev_intersectionsQ2, *countNonDegenIntQ*2*sizeof(coord_t));
   cudaMalloc((void **) &dev_alphaValuesP, *countNonDegenIntP*sizeof(int));
   cudaMalloc((void **) &dev_alphaValuesQ, *countNonDegenIntQ*sizeof(int));
 
@@ -1455,6 +1552,12 @@ void calculateIntersections(
     cudaEventCreate(&kernelStart4);
     cudaEventCreate(&kernelStop4);
   }
+  
+  cudaMemcpy(neighborMapQ, dev_neighborMapQ, *countNonDegenIntQ*sizeof(long), cudaMemcpyDeviceToHost);
+  printf("\nneighborMap array %d\n", *countNonDegenIntQ);
+  for(int cc=0; cc<*countNonDegenIntQ; ++cc){
+    printf("%d-%ld ", cc, *(neighborMapQ+cc));
+  }
 
   if(DEBUG_TIMING) cudaEventRecord(kernelStart4);
   gpuCalculateIntersections<<<dimGridP, dimBlock>>>(
@@ -1471,7 +1574,13 @@ void calculateIntersections(
 
   cudaDeviceSynchronize();
 
-// **cudafree
+  cudaMemcpy(*neighborP, dev_neighborP, *countNonDegenIntP*sizeof(int), cudaMemcpyDeviceToHost);
+  printf("\nneighbor array %d\n", *countNonDegenIntP);
+  for(int cc=0; cc<*countNonDegenIntP; ++cc){
+    printf("%d-%d ", cc, *(*neighborP+cc));
+  }
+
+  if(DEBUG_INFO_PRINT) printf("gpuCalculateIntersections done. Sort Q starting...\n");
 
   if(DEBUG_TIMING){
     cudaEventCreate(&kernelStart5);
@@ -1489,7 +1598,7 @@ void calculateIntersections(
 
   cudaDeviceSynchronize();
 
-// **cudafree
+  if(DEBUG_INFO_PRINT) printf("gpuSortPolyQ done. Initial labeling starting...\n");
 
   // Phase4: Inital label classificaiton
   cudaMalloc((void **) &dev_initLabelsP, *countNonDegenIntP*sizeof(int));
@@ -1526,6 +1635,7 @@ void calculateIntersections(
   if(DEBUG_TIMING) cudaEventSynchronize(kernelStop6);
   
   cudaDeviceSynchronize();
+  if(DEBUG_INFO_PRINT) printf("gpuCalculateInitLabel done. GPU clean-up starting...\n");
 
   float kernelTiming0=0, kernelTiming1=0, kernelTiming12=0, kernelTiming2=0, kernelTiming3=0, kernelTiming4=0, kernelTiming5=0, kernelTiming6=0;
   if(DEBUG_TIMING){

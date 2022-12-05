@@ -20,9 +20,9 @@ int main(int argc, char *argv[])
     // Defines a small pair set for debugging
     // totalPairNum=30; 
 
-    for(int i=0; i<totalPairNum; ++i){
-        cout<<*(pIDList+i)<<", "<<*(qIDList+i)<<endl;
-    }
+    // for(int i=0; i<totalPairNum; ++i){
+    //     cout<<*(pIDList+i)<<", "<<*(qIDList+i)<<endl;
+    // }
     // printf("\nPair print end (from main.cpp)\n");
     ghcuda(pIDList, qIDList, totalPairNum,
           pBaseCoords, pOverlayCoords, 

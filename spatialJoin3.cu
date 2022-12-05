@@ -121,10 +121,11 @@ Second user input: dimSelect
 
     //==========================================================================
     printf("\npPolygons size %d qPolygons size %d\n", pPolygons.size(), qPolygons.size());
-
-//PrintPolygon(baseCoords+2*bVPSNum[1485], bVNum[1486]);
-//printf("\n\n\n");
-//PrintPolygon(overlayCoords+2*oVPSNum[10], oVNum[11]);
+// PrintPolygon(baseCoords+2*bVPSNum[1485], bVNum[1486]);
+PrintPolygon(baseCoords, 5);
+printf("\n\n\n");
+// PrintPolygon(overlayCoords+2*oVPSNum[10], oVNum[11]);
+PrintPolygon(overlayCoords, 5);
 //return;
 
 printf("size %d %d %d %d %d\n", bVNum[0], bVNum[1], bVNum[2], bVPSNum[0], bVPSNum[1]);

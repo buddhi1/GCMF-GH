@@ -32,10 +32,11 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////
 
-#define EPSILON  0.000000001            // tolerance
+// #define EPSILON  0.000000001            // tolerance
 
 vector<polygon> pPolygon, qPolygon; 
-vertex **pPolygonVertexPointers, **qPolygonVertexPointers;                // two input polygons
+// vertex **pPolygonVertexPointers;                // two input polygons
+vertex **qPolygonVertexPointers;                // two input polygons
 vector<polygon> resultPolygon;                     // output polygon
 
 bool UNION = false;                     // global switch for computing union instead of intersection

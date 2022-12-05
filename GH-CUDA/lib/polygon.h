@@ -62,7 +62,7 @@ public:
   //
   // constructor for generating a vertex with explicit coordinates
   //
-  vertex(double x, double y) :
+  vertex(coord_t x, coord_t y) :
     p(x,y), prev(NULL), next(NULL), neighbour(NULL),
     intersection(false), source(false),
     alpha(-1.0), label(NONE), enex(NEITHER)

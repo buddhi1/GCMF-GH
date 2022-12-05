@@ -301,9 +301,9 @@ void loadPolygonFromShapeFile3(vector<polygon>& PP, string s, int endOfFile) {
 	// printPolygonVector(PP);
 }
 
-vector<double> getMBR(polygon pol){
-	vector<double> mbr;
-	double maxX, minX, maxY, minY;
+vector<coord_t> getMBR(polygon pol){
+	vector<coord_t> mbr;
+	coord_t maxX, minX, maxY, minY;
 	maxX=pol.root->p.x;
 	maxY=pol.root->p.y;
 	minX=pol.root->p.x;
@@ -333,7 +333,7 @@ vector<double> getMBR(polygon pol){
 	return mbr;
 }
 
-void loadPolygonMBRs(vector<vector<double>>& pPolygonMBRs, string s, int endOfFile) {
+void loadPolygonMBRs(vector<vector<coord_t>>& pPolygonMBRs, string s, int endOfFile) {
 	string line;
 	// cout << s << endl;
 	ifstream from(s);
@@ -392,7 +392,7 @@ void loadPolygonMBRs(vector<vector<double>>& pPolygonMBRs, string s, int endOfFi
 	// cout << "Num polygons " << pPolygonMBRs.size() << endl;
 }
 
-void loadPolygonMBRsFromVector(vector<vector<double>>& pPolygonMBRs, vector<polygon>& PP, int endOfFile) {
+void loadPolygonMBRsFromVector(vector<vector<coord_t>>& pPolygonMBRs, vector<polygon>& PP, int endOfFile) {
 	for(int i=0; i<endOfFile; ++i){
 		pPolygonMBRs.push_back(getMBR(PP[i]));
 		printf("%.17g %.17g  %.17g  %.17g \n", pPolygonMBRs[i][0], pPolygonMBRs[i][1], pPolygonMBRs[i][2], pPolygonMBRs[i][3]);
