@@ -194,16 +194,21 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
   getCMBR(cmbr);
 
   if(swapped){
-    return 1;
+    // return 1;
     calculateIntersections(
         oCoords,
         bCoord, 
         pPolygon[0].size, qPolygon[0].size, cmbr, 
         pOVNum, pOVPSNum, pBVNum, pBVPSNum, oPID, bPID,
-        &countNonDegenIntQ, &countNonDegenIntP, 
-        &intersectionsQ,  &intersectionsP, &alphaValuesQ, &alphaValuesP,
-        &initLabelsQ, &initLabelsP, 
-        &neighborQ, &neighborP, &invalid);
+        &countNonDegenIntP, &countNonDegenIntQ, 
+        &intersectionsP, &intersectionsQ, &alphaValuesP, &alphaValuesQ,
+        &initLabelsP, &initLabelsQ, 
+        &neighborP, &neighborQ, &invalid);
+        
+        // &countNonDegenIntQ, &countNonDegenIntP, 
+        // &intersectionsQ,  &intersectionsP, &alphaValuesQ, &alphaValuesP,
+        // &initLabelsQ, &initLabelsP, 
+        // &neighborQ, &neighborP, &invalid);
   }else{
     calculateIntersections(
         bCoord, 
@@ -276,10 +281,12 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
   
   for(int ii=0; ii<=qPolygon[0].size; ++ii){
     current=V;
-    // cout<<"P* Copying "<<ii<<endl;
+    // cout<<i<<" Q* Copying "<<ii<<endl;
     while((fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) > EPSILON) || (fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) > EPSILON)){
     // while(*(intersectionsQ+(i%intersectionQArrayMax))!=V->p.x || *(intersectionsQ+((i+1)%intersectionQArrayMax))!=V->p.y){
       // cout<<"q$$$$** Copying "<<i<<endl;
+      // cout<<setprecision(13)<<"intersectX: "<<*(intersectionsQ+(i%intersectionQArrayMax))<<" list: "<<V->p.x<<endl;
+      // cout<<setprecision(13)<<"intersectY: "<<*(intersectionsQ+((i+1)%intersectionQArrayMax))<<" list: "<<V->p.y<<endl;
       tmpVertex=new vertex(*(intersectionsQ+i), *(intersectionsQ+i+1));
       tmpVertex->label=(IntersectionLabel)(*(initLabelsQ+(i/2)));
       tmpVertex->source=false;
@@ -289,13 +296,13 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
       tmpVertex->prev=current->prev;
       current->prev=tmpVertex;
       // cout<<"1######** Copying "<<(*(neighborQ+(i/2)))-1<<endl;
-      // cout<< fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<"q++++ Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
+      // cout<< setprecision(13)<<fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<" q++++ Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
       tmpVertex->neighbour=qPolygonVertexPointers[(*(neighborQ+(i/2)))-1];
-      // cout<< fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<"q$$$$===** Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
+      // cout<< fabs(*(intersectionsQ+((i+1)%intersectionQArrayMax))-V->p.y) <<" q$$$$===** Copying "<<i<<" "<< fabs(*(intersectionsQ+(i%intersectionQArrayMax))-V->p.x) <<endl;
       qPolygonVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=tmpVertex;
-      // cout<<"q$$$$-----** Copying "<<i<<endl;
+      // cout<<"q$$$$-----** Copying "<<i<<"\n"<<endl;
       i+=2;
-      // cout<<"P** Copying "<<i<<endl;
+      // cout<<"Q** Copying "<<i<<"\n\n"<<endl;
     }
     // cout<<"P*++* Copying "<<i<<endl;
     if(ii<qPolygon[0].size){
@@ -305,9 +312,12 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
         V->neighbour=qPolygonVertexPointers[(*(neighborQ+(i/2)))-1];
         qPolygonVertexPointers[(*(neighborQ+(i/2)))-1]->neighbour=V;
       }
+      //  cout<<setprecision(13)<<i<<" ++intersectX: "<<*(intersectionsQ+(i%intersectionQArrayMax))<<" list: "<<V->p.x<<endl;
+      // cout<<setprecision(13)<<i<<" ++intersectY: "<<*(intersectionsQ+((i+1)%intersectionQArrayMax))<<" list: "<<V->p.y<<endl;
+      
     }
+    // cout<<"END LOOP "<<i<<"\n\n"<<endl;
     i+=2;
-    // cout<<"P*-----* Copying "<<i<<endl;
     V=current->next;
   }
   if(DEBUG_INFO_PRINT) printf("Copying completed");
@@ -354,7 +364,7 @@ int GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int
   cleanUpResult();
 
   // write output polygon
-  if(DEBUG_INFO_PRINT && bPID==18 && oPID==670) {
+  if(DEBUG_INFO_PRINT) {
     cout << "R ";
     savePolygon(resultPolygon, outputFile);
   }
@@ -376,10 +386,10 @@ int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
           /*coord_t *baseCoords, coord_t *overlayCoords,  */                 
           coord_t *bCoords, coord_t *oCoords,
           int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
-  // pIDList[0]={27};
-  // qIDList[0]={539};
+  // pIDList[0]={52};
+  // qIDList[0]={10108};
   int swapped=0;
-  // for(int cid=0, processedID=1; cid<3; ++cid){
+  // for(int cid=0, processedID=1; cid<1; ++cid){
   for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
     //skip list for error handling
     // if((pIDList[cid]==52 && qIDList[cid]==10108)||

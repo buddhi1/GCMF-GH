@@ -603,7 +603,7 @@ __global__ void gpuNeighborMap(
         {
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
-          printf("\nNeighborMapQ id=%d id2=%ld  qid=%d qid2=%ld \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)& ps-index=%d >> %d\n",id, id2, qid, qid2, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, psQ2[id]+count2, i);   
+          // printf("\nNeighborMapQ id=%d id2=%ld  qid=%d qid2=%ld \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)& ps-index=%d >> %d\n",id, id2, qid, qid2, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, psQ2[id]+count2, i);   
           if(i!=0){
             count1++;
             if((id<sizeP && (i==1 || i==3 || i==5 || i==7)) || (id>=sizeP && (i==1 || i==3 || i==5 || i==7))){
@@ -615,6 +615,7 @@ __global__ void gpuNeighborMap(
 
             // neighborMapQ[psQ2[id]+count2]=qid2/2;      
             neighborMapQ[psQ2[id]+count2]=qid;   
+            // printf("\nNeighborMapQ id=%d id2=%ld  qid=%d qid2=%ld \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)& ps-index=%d >> %d\n",id, id2, qid, qid2, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, psQ2[id]+count2, i);   
           }
         }
       }
@@ -975,7 +976,7 @@ __global__ void gpuCalculateIntersections(
         {
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
-            printf("\n id=%d id2=%ld qid=%d i=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)\n", id, bid2, qid, i, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y);
+          // printf("\n id=%d id2=%ld qid=%d i=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)\n", id, bid2, qid, i, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y);
           if(i){
             count1++;
             if(i==1 || i==3 || i==5 || i==7){
@@ -1019,6 +1020,7 @@ __global__ void gpuCalculateIntersections(
             }
             // printf("\niNNNNN\n");
             // printf("\n id=%d id2=%ld qid=%d neighborP %d neighborQ %d\n", id, bid2, qid, neighborP[psP2[pid]+count2], neighborQ[neighborQId]);
+            // printf("\n id=%d id2=%ld qid=%d i=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f) loc=%d\n", id, bid2, qid, i, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, neighborQId);
 
             switch(i) {
               // case X_INTERSECTION:
@@ -1036,6 +1038,7 @@ __global__ void gpuCalculateIntersections(
                 intersectionsQ2[neighborQId*2]=I.x;       //consider edge for the intersection array
                 intersectionsQ2[neighborQId*2+1]=I.y;
                 alphaValuesQ[neighborQId]=(int)pow(10, EPSILON_POSITIONS)*beta;
+              // printf("\n id=%d id2=%ld qid=%d i=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f) loc=%d R(%.13f, %.13f)\n", id, bid2, qid, i, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, neighborQId, I.x, I.y);
                 break;
               // X-overlap
               // P1 and I(=P1 I is in Q)
@@ -1554,11 +1557,11 @@ void calculateIntersections(
     cudaEventCreate(&kernelStop4);
   }
   
-  cudaMemcpy(neighborMapQ, dev_neighborMapQ, *countNonDegenIntQ*sizeof(long), cudaMemcpyDeviceToHost);
-  printf("\nneighborMap array %d\n", *countNonDegenIntQ);
-  for(int cc=0; cc<*countNonDegenIntQ; ++cc){
-    printf("%d-%ld ", cc, *(neighborMapQ+cc));
-  }
+  // cudaMemcpy(neighborMapQ, dev_neighborMapQ, *countNonDegenIntQ*sizeof(long), cudaMemcpyDeviceToHost);
+  // printf("\nneighborMap array %d\n", *countNonDegenIntQ);
+  // for(int cc=0; cc<*countNonDegenIntQ; ++cc){
+  //   printf("%d-%ld ", cc, *(neighborMapQ+cc));
+  // }
 
   if(DEBUG_TIMING) cudaEventRecord(kernelStart4);
   gpuCalculateIntersections<<<dimGridP, dimBlock>>>(
@@ -1580,6 +1583,8 @@ void calculateIntersections(
   // for(int cc=0; cc<*countNonDegenIntP; ++cc){
   //   printf("%d-%d ", cc, *(*neighborP+cc));
   // }
+
+
 
   if(DEBUG_INFO_PRINT) printf("gpuCalculateIntersections done. Sort Q starting...\n");
 
@@ -1633,6 +1638,11 @@ void calculateIntersections(
   cudaMemcpy(*alphaValuesP, dev_alphaValuesP, *countNonDegenIntP*sizeof(int), cudaMemcpyDeviceToHost);
   cudaMemcpy(*alphaValuesQ, dev_alphaValuesQ, *countNonDegenIntQ*sizeof(int), cudaMemcpyDeviceToHost);
   
+  // printf("\nIntersections Q %d\n", *countNonDegenIntQ);
+  // for(int cc=0; cc<*countNonDegenIntQ*2; cc+=2){
+  //   printf("%.13f, %.13f\n", cc, *(*intersectionsQ+cc), *(*intersectionsQ+cc+1));
+  // }
+
   if(DEBUG_TIMING) cudaEventSynchronize(kernelStop6);
   
   cudaDeviceSynchronize();
