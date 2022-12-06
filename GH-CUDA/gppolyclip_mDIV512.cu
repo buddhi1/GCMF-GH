@@ -530,7 +530,7 @@ __global__ void gpuCountIntersections(
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
           if(i!=0){
-            printf("\n count id=%d qid=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)  %ld >> i=%d\n", id, qid, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, (id2-bStartIndex)/2, i);   
+            // printf("\n count id=%d qid=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)  %ld >> i=%d\n", id, qid, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y, (id2-bStartIndex)/2, i);   
             count1++;
             if(i==1 || i==3 || i==5 || i==7)
               count2++;
@@ -965,8 +965,8 @@ __global__ void gpuCalculateIntersections(
           Q2.x = oCoords[oStartIndex];
           Q2.y = oCoords[oStartIndex+1];
         }else{
-          Q2.x = oCoords[bid2+2];
-          Q2.y = oCoords[bid2+3];
+          Q2.x = oCoords[qid2+2];
+          Q2.y = oCoords[qid2+3];
         }
         // Q2.x = oCoords[(qid2+2)%(2*sizeQ)];
         // Q2.y = oCoords[(qid2+3)%(2*sizeQ)];
@@ -975,6 +975,7 @@ __global__ void gpuCalculateIntersections(
         {
           // determine intersection or overlap type
           int i = getIntersectType(P1, P2, Q1, Q2, alpha, beta);
+            printf("\n id=%d id2=%ld qid=%d i=%d \nP(%.13f, %.13f)(%.13f, %.13f); Q(%.13f, %.13f)(%.13f, %.13f)\n", id, bid2, qid, i, P1.x, P1.y, P2.x, P2.y, Q1.x, Q1.y, Q2.x, Q2.y);
           if(i){
             count1++;
             if(i==1 || i==3 || i==5 || i==7){
@@ -1017,7 +1018,7 @@ __global__ void gpuCalculateIntersections(
               }
             }
             // printf("\niNNNNN\n");
-            printf("\nneighborP %d neighborQ %d\n", neighborP[psP2[pid]+count2], neighborQ[neighborQId]);
+            // printf("\n id=%d id2=%ld qid=%d neighborP %d neighborQ %d\n", id, bid2, qid, neighborP[psP2[pid]+count2], neighborQ[neighborQId]);
 
             switch(i) {
               // case X_INTERSECTION:
@@ -1574,11 +1575,11 @@ void calculateIntersections(
 
   cudaDeviceSynchronize();
 
-  cudaMemcpy(*neighborP, dev_neighborP, *countNonDegenIntP*sizeof(int), cudaMemcpyDeviceToHost);
-  printf("\nneighbor array %d\n", *countNonDegenIntP);
-  for(int cc=0; cc<*countNonDegenIntP; ++cc){
-    printf("%d-%d ", cc, *(*neighborP+cc));
-  }
+  // cudaMemcpy(*neighborP, dev_neighborP, *countNonDegenIntP*sizeof(int), cudaMemcpyDeviceToHost);
+  // printf("\nneighbor array %d\n", *countNonDegenIntP);
+  // for(int cc=0; cc<*countNonDegenIntP; ++cc){
+  //   printf("%d-%d ", cc, *(*neighborP+cc));
+  // }
 
   if(DEBUG_INFO_PRINT) printf("gpuCalculateIntersections done. Sort Q starting...\n");
 

@@ -194,6 +194,7 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
   getCMBR(cmbr);
 
   if(swapped){
+    return 1;
     calculateIntersections(
         oCoords,
         bCoord, 
@@ -222,10 +223,10 @@ int regularPolygonHandler(coord_t *bCoord, coord_t *oCoords, int *pBVNum, long *
   // for(int cc=0; cc<countNonDegenIntP; ++cc){
   //   printf("%d-%d ", cc, neighborP[cc]);
   // }
-  printf("\nneighbor array %d\n", countNonDegenIntQ);
-  for(int cc=0; cc<countNonDegenIntQ; ++cc){
-    printf("%d-%d ", cc, neighborQ[cc]);
-  }
+  // printf("\nneighbor array %d\n", countNonDegenIntQ);
+  // for(int cc=0; cc<countNonDegenIntQ; ++cc){
+  //   printf("%d-%d ", cc, neighborQ[cc]);
+  // }
 
   // -------------------------------------------------------------------------------------------
   // Polygon P: (pPolygon)insert intersection vertices and change alpha value in the degenerate cases
@@ -353,10 +354,11 @@ int GH_CUDA(coord_t *bCoords, coord_t *oCoords, int *pBVNum, long *pBVPSNum, int
   cleanUpResult();
 
   // write output polygon
-  if(DEBUG_INFO_PRINT) {
+  if(DEBUG_INFO_PRINT && bPID==18 && oPID==670) {
     cout << "R ";
     savePolygon(resultPolygon, outputFile);
   }
+  resultPolygon.clear();
   if(DEBUG_TIMING){
     auto duration = duration_cast<microseconds>(end - start);
     auto duration1 = duration_cast<microseconds>(end1 - start1);
@@ -374,55 +376,22 @@ int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
           /*coord_t *baseCoords, coord_t *overlayCoords,  */                 
           coord_t *bCoords, coord_t *oCoords,
           int *pBVNum, long *pBVPSNum, int *pOVNum, long *pOVPSNum){
-  pIDList[0]={18};
-  qIDList[0]={670};
+  // pIDList[0]={27};
+  // qIDList[0]={539};
   int swapped=0;
-  for(int cid=0, processedID=1; cid<1; ++cid){
-  // for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
+  // for(int cid=0, processedID=1; cid<3; ++cid){
+  for(int cid=0, processedID=1; cid<totalNumPairs; ++cid){
     //skip list for error handling
-    // if(
-    //   (qIDList[cid]==11771) ||
-    //   (qIDList[cid]==11754) ||
-    //   (qIDList[cid]==11770) ||
-    //   (qIDList[cid]==11770) ||
-    //   (qIDList[cid]==11780) ||
-    //   (qIDList[cid]==11707) ||
-    //   (qIDList[cid]==11704) ||
-    //   (qIDList[cid]==11827) ||
-    //   (qIDList[cid]==9609) ||
+    // if((pIDList[cid]==52 && qIDList[cid]==10108)||
+    // (pIDList[cid]==103 && qIDList[cid]==10768)||
+    // (pIDList[cid]==105 && qIDList[cid]==10800)
 
-    //   // (pIDList[cid]==177) || 
-    //   (pIDList[cid]==175) || 
-    //   (pIDList[cid]==174) || 
-    //   (pIDList[cid]==172) || 
-    //   (pIDList[cid]==171) || 
-    //   (pIDList[cid]==170) || 
-    //   (pIDList[cid]==166) || 
-    //   (pIDList[cid]==158) || 
-    //   (pIDList[cid]==145) || 
-    //   (pIDList[cid]==133) || 
-    //   (pIDList[cid]==132) || 
-    //   (pIDList[cid]==131) || 
-    //   (pIDList[cid]==130) || 
-    //   (pIDList[cid]==120) || 
-    //   (pIDList[cid]==118) || 
-    //   (pIDList[cid]==115 && qIDList[cid]==5416) || 
-    //   pIDList[cid]==112 || 
-    //   pIDList[cid]==110 || 
-    //   (pIDList[cid]==105) || 
-    //   pIDList[cid]==104 || 
-    //   pIDList[cid]==103 || 
-    //   pIDList[cid]==72 || 
-    //   pIDList[cid]==44 || 
-    //   pIDList[cid]==27 /* || 
-      // pIDList[cid]==18 )
-    //   pIDList[cid]==22 || 
-    //   pIDList[cid]==41) 
-      // {
-      //   continue; 
-      // }
+   // ){
+    //     continue; 
+    //   }
 
     // readInputFromShapeFiles(&baseCoords, &overlayCoords, inputShp1, pIDList[cid], inputShp2, qIDList[cid]);
+    printf("\n\n*** Pair ID: %d, Processing Number: %d***\n", cid, processedID++);
     swapped=loadPolygonDataFromLayer(pIDList[cid], qIDList[cid]);
    
     // printf("\n*** Pair  %d %d***\n", pPolygon[0].size, qPolygon[0].size);
@@ -431,7 +400,6 @@ int ghcuda(int pIDList[], int qIDList[], int totalNumPairs,
     //   qPolygon.clear();
     //   continue;
     // }
-    printf("\n\n*** Pair ID: %d, Processing Number: %d***\n", cid, processedID++);
     printf(" [Pair invalid=%d]\n\n", 
             GH_CUDA(bCoords, oCoords, pBVNum, pBVPSNum, pOVNum, pOVPSNum, pIDList[cid], qIDList[cid], swapped));
 
