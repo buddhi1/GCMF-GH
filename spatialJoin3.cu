@@ -90,13 +90,18 @@ Second user input: dimSelect
     char baseFileName[100], overlayFileName[100];
     switch(DATASET){
        case 1:
-         //strcpy(baseFileName, "/pylon5/cc560kp/danialll/Text_Datasets/admin_states.txt");
-        //  strcpy(baseFileName, "../datasets/datasets/admin_states-small.txt");
-         strcpy(baseFileName, "../datasets/datasets/admin_states.txt");
-	 //strcpy(overlayFileName, "/pylon5/cc560kp/danialll/Text_Datasets/urban_areas.txt");
-	//  strcpy(overlayFileName, "../datasets/datasets/urban_areas-small.txt");
-	 strcpy(overlayFileName, "../datasets/datasets/urban_areas.txt");
-         printf("\nDataset: admin - urban\n");
+        //  strcpy(baseFileName, "/pylon5/cc560kp/danialll/Text_Datasets/admin_states.txt");
+	    //  strcpy(overlayFileName, "/pylon5/cc560kp/danialll/Text_Datasets/urban_areas.txt");
+        
+        //  printf("\nDataset: admin - urban\n");
+        //  strcpy(baseFileName, "../datasets/datasets/admin_states.txt");
+	    //  strcpy(overlayFileName, "../datasets/datasets/urban_areas.txt");
+
+         printf("Dataset: Ocean - Land\n");
+         strcpy(baseFileName, "../datasets/datasets/ne_10m_ocean.txt");
+	     strcpy(overlayFileName, "../datasets/datasets/ne_10m_land.txt");
+        //  strcpy(overlayFileName, "../datasets/datasets/ne_10m_ocean.txt");
+	    //  strcpy(baseFileName, "../datasets/datasets/ne_10m_land.txt");
          break;
        case 2:
          strcpy(baseFileName, "/pylon5/cc560kp/danialll/Text_Datasets/bases_242.txt");

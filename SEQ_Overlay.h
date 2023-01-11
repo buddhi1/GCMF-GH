@@ -111,6 +111,7 @@ int getVertex(char* buff, char tkBuff[][50], coord_t* tk, int i,int n){
         tk[k]=atof(token[k]);
         strcpy(tkBuff[k], token[k]);
         // if(n==2 && k<5) printf("\nfBuff=%.13f \t token=%s\n", tk[k], token[k]);
+        // printf("\nk=%d j=%d fBuff=%.13f \t token=%s\n", k, j, tk[k], token[k]);
     }
     if(i>=strlen(buff)){i=-2;}
     return(++i);
@@ -288,16 +289,22 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
     char* buff=(char*)malloc(sizeof(char)*MAX_BUFF);
     coord_t fBuff[2], x1, y1, x2, y2, polyBuff[MAX_VERTICES][2];
     fid1=fopen(fileName,"rt");    
+
     int pCounter=0, i;
     double edgeSum;
+    int ccount=0;
 
     point2D v;
     polygon P;
 
-    int ccount=0;
     while(fgets(buff,MAX_BUFF,fid1)!=NULL && pCounter<maxPoly){        
+        // printf("\nSEQ_Overlay []: ");
         char cX1[20], cY1[20], cX2[20], cY2[20]; 
         i=0;
+        if(ccount==0){
+            ccount++;
+            continue;
+        }
         i=getVertex(buff, tkBuff, fBuff,i,1);
         fNum=0;
         x1=1000000;
@@ -305,6 +312,7 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
         x2=-1000000;
         y2=-1000000;
         edgeSum=0;
+        // printf("\nSEQ_Overlay [%d]: ", i);
         while(i!=-1){        
             i=getVertex(buff, tkBuff, fBuff,i,2);
             if(i==-1&&fBuff[0]==0&&fBuff[1]==0)break;
@@ -315,6 +323,7 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
             if(fBuff[0]>x2){x2=fBuff[0];strcpy(cX2, tkBuff[0]);}
             if(fBuff[1]>y2){y2=fBuff[1];strcpy(cY2, tkBuff[1]);}
         }
+        // printf("\n33SEQ_Overlay []: ");
         seqMBR[pCounter*4]=CoordToMBR(cX1, mbrType);
         seqMBR[pCounter*4+1]=CoordToMBR(cY1, mbrType);
         seqMBR[pCounter*4+2]=CoordToMBR(cX2, mbrType);
@@ -334,12 +343,11 @@ int ReadTextFormatPolygon2WithVector(const char* fileName, int* bVNum, long* bVP
         if(seqMBR2[pCounter*4+1]>seqMBR2[pCounter*4+3])swapElements(seqMBR2, pCounter*4+1, pCounter*4+3);
         else if(seqMBR2[pCounter*4+1]==seqMBR2[pCounter*4+3]){printf("\nMBR Error!\n");continue;}
 
-//printf("\n%d:\t%ld  %s\t%ld  %s\t%ld  %s\t%ld  %s", pCounter, seqMBR[pCounter*4], cX1, seqMBR[pCounter*4+1], cY1, seqMBR[pCounter*4+2], cX2, seqMBR[pCounter*4+3], cY2);
+// printf("\n%d:\t%ld  %s\t%ld  %s\t%ld  %s\t%ld  %s", pCounter, seqMBR[pCounter*4], cX1, seqMBR[pCounter*4+1], cY1, seqMBR[pCounter*4+2], cX2, seqMBR[pCounter*4+3], cY2);
 //printf("\n%s %s %s %s", cX1, cY1, cX2, cY2);
         fNum-=2;
 
         ccount++;
-        if(ccount==22) printf("\nSEQ_Overlay [%d]: ", ccount);
 
         for(int k=0;k<fNum;k++){
             *(baseCoords+2*(*bVNumSum+k))=polyBuff[k+2][0];
